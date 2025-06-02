@@ -1,0 +1,190 @@
+package main
+
+import (
+	"strings"
+
+	"github.com/charmbracelet/bubbles/textinput"
+	tea "github.com/charmbracelet/bubbletea"
+)
+
+type FormField struct {
+	Placeholder string
+	Required    bool
+	Value       string
+	CharLimit   int
+	Width       int
+}
+
+type FormModel struct {
+	title    string
+	inputs   []textinput.Model
+	labels   []string
+	fields   []FormField
+	focused  int
+	errorMsg string
+	saveText string
+	onSave   func(FormModel) tea.Cmd
+	onCancel func() tea.Cmd
+}
+
+func NewForm(title string, fields []FormField, labels []string, saveText string) FormModel {
+	inputs := make([]textinput.Model, len(fields))
+
+	for i, field := range fields {
+		input := textinput.New()
+
+		input.CharLimit = field.CharLimit
+		input.Width = field.Width
+
+		input.Placeholder = field.Placeholder
+		if field.Value != "" {
+			input.SetValue(field.Value)
+		}
+		if i == 0 {
+			input.Focus()
+		}
+		inputs[i] = input
+	}
+
+	return FormModel{
+		title:    title,
+		inputs:   inputs,
+		labels:   labels,
+		fields:   fields,
+		focused:  0,
+		saveText: saveText,
+	}
+}
+
+func (m *FormModel) SetHandlers(onSave func(FormModel) tea.Cmd, onCancel func() tea.Cmd) {
+	m.onSave = onSave
+	m.onCancel = onCancel
+}
+
+func (m FormModel) GetValue(index int) string {
+	if index < len(m.inputs) {
+		return m.inputs[index].Value()
+	}
+	return ""
+}
+
+func (m FormModel) GetAllValues() []string {
+	values := make([]string, len(m.inputs))
+	for i := range m.inputs {
+		values[i] = m.inputs[i].Value()
+	}
+	return values
+}
+
+func (m FormModel) Init() tea.Cmd {
+	return textinput.Blink
+}
+
+func (m FormModel) Update(msg tea.Msg) (FormModel, tea.Cmd) {
+	var cmds []tea.Cmd
+
+	switch msg := msg.(type) {
+	case tea.KeyMsg:
+		switch msg.String() {
+		case "ctrl+c", "esc":
+			if m.onCancel != nil {
+				return m, m.onCancel()
+			}
+			return m, nil
+		case "tab", "down":
+			m.nextInput()
+		case "shift+tab", "up":
+			m.prevInput()
+		case "enter":
+			if m.focused == len(m.inputs) {
+				return m.handleSave()
+			} else {
+				m.nextInput()
+			}
+		}
+	}
+
+	// update the focused input
+	if m.focused < len(m.inputs) {
+		var cmd tea.Cmd
+		m.inputs[m.focused], cmd = m.inputs[m.focused].Update(msg)
+		cmds = append(cmds, cmd)
+	}
+
+	return m, tea.Batch(cmds...)
+}
+
+func (m FormModel) View() string {
+	var s strings.Builder
+
+	s.WriteString(m.title + "\n\n")
+
+	if m.errorMsg != "" {
+		s.WriteString("Error: " + m.errorMsg + "\n\n")
+	}
+
+	// render all input fields
+	for i, label := range m.labels {
+		s.WriteString(label + "\n")
+		s.WriteString(m.inputs[i].View() + "\n\n")
+	}
+
+	// save button
+	if m.focused == len(m.inputs) {
+		s.WriteString("> [" + m.saveText + "] <\n\n")
+	} else {
+		s.WriteString("  [" + m.saveText + "]\n\n")
+	}
+
+	s.WriteString("tab/↑↓ to navigate, enter to save, esc to cancel")
+
+	return s.String()
+}
+
+// nextInput moves focus to the next input
+func (m *FormModel) nextInput() {
+	if m.focused < len(m.inputs) {
+		m.inputs[m.focused].Blur()
+	}
+
+	m.focused++
+	if m.focused > len(m.inputs) {
+		m.focused = 0
+	}
+
+	if m.focused < len(m.inputs) {
+		m.inputs[m.focused].Focus()
+	}
+}
+
+// prevInput moves focus to the previous input
+func (m *FormModel) prevInput() {
+	if m.focused < len(m.inputs) {
+		m.inputs[m.focused].Blur()
+	}
+
+	m.focused--
+	if m.focused < 0 {
+		m.focused = len(m.inputs)
+	}
+
+	if m.focused < len(m.inputs) {
+		m.inputs[m.focused].Focus()
+	}
+}
+
+func (m FormModel) handleSave() (FormModel, tea.Cmd) {
+	// validate required fields
+	for i, field := range m.fields {
+		if field.Required && strings.TrimSpace(m.inputs[i].Value()) == "" {
+			m.errorMsg = m.labels[i] + " required"
+			return m, nil
+		}
+	}
+
+	if m.onSave != nil {
+		return m, m.onSave(m)
+	}
+
+	return m, nil
+}
