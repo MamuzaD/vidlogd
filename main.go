@@ -7,36 +7,74 @@ import (
 	tea "github.com/charmbracelet/bubbletea"
 )
 
-type model struct{}
+const (
+	MainMenuView ViewType = iota
+	LogVideoView
+)
 
-func initialModel() model {
-	return model{}
+type Model struct {
+	currentView ViewType
+
+	mainMenu MainMenuModel
+	logVideo LogVideoModel
 }
 
-func (m model) Init() tea.Cmd {
+func (m Model) Init() tea.Cmd {
 	return tea.SetWindowTitle("VidLogd")
 }
 
-func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
+func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
+	var cmd tea.Cmd
+
 	switch msg := msg.(type) {
 	case tea.KeyMsg:
 		switch msg.String() {
-		case "ctrl+c", "q":
+		case "ctrl+c":
 			return m, tea.Quit
+		case "q":
+			if m.currentView != MainMenuView {
+				m.currentView = MainMenuView
+				return m, nil
+			}
 		}
+
+	case NavigateMsg:
+		m.currentView = msg.View
+		return m, nil
 	}
 
-	return m, nil
+	switch m.currentView {
+	case MainMenuView:
+		m.mainMenu, cmd = m.mainMenu.Update(msg)
+	case LogVideoView:
+		m.logVideo, cmd = m.logVideo.Update(msg)
+	}
+
+	return m, cmd
 }
 
-func (m model) View() string {
-	s := "the beginning of vidlogd\n"
+func (m Model) View() string {
+	var content string
 
-	return s
+	switch m.currentView {
+	case MainMenuView:
+		content = m.mainMenu.View()
+	case LogVideoView:
+		content = m.logVideo.View()
+	}
+
+	return content
 }
 
 func main() {
-	p := tea.NewProgram(initialModel())
+	m := Model{
+		currentView: MainMenuView,
+		mainMenu:    NewMainMenuModel(),
+	}
+
+	p := tea.
+		NewProgram(m, tea.WithAltScreen())
+
 	if _, err := p.Run(); err != nil {
 		fmt.Printf("there's been an error: %v", err)
 		os.Exit(1)
