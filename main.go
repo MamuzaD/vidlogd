@@ -70,6 +70,7 @@ func main() {
 	m := Model{
 		currentView: MainMenuView,
 		mainMenu:    NewMainMenuModel(),
+		logVideo:    NewLogVideoModel(),
 	}
 
 	p := tea.
