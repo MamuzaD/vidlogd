@@ -7,8 +7,18 @@ import (
 	tea "github.com/charmbracelet/bubbletea"
 )
 
+const (
+	url = iota
+	title
+	channel
+	release
+	logDate
+	review
+)
+
 type FormField struct {
 	Placeholder string
+	Label       string
 	Required    bool
 	Value       string
 	CharLimit   int
@@ -18,7 +28,6 @@ type FormField struct {
 type FormModel struct {
 	title    string
 	inputs   []textinput.Model
-	labels   []string
 	fields   []FormField
 	focused  int
 	errorMsg string
@@ -27,7 +36,7 @@ type FormModel struct {
 	onCancel func() tea.Cmd
 }
 
-func NewForm(title string, fields []FormField, labels []string, saveText string) FormModel {
+func NewForm(title string, fields []FormField, saveText string) FormModel {
 	inputs := make([]textinput.Model, len(fields))
 
 	for i, field := range fields {
@@ -49,7 +58,6 @@ func NewForm(title string, fields []FormField, labels []string, saveText string)
 	return FormModel{
 		title:    title,
 		inputs:   inputs,
-		labels:   labels,
 		fields:   fields,
 		focused:  0,
 		saveText: saveText,
@@ -124,8 +132,8 @@ func (m FormModel) View() string {
 	}
 
 	// render all input fields
-	for i, label := range m.labels {
-		s.WriteString(label + "\n")
+	for i, field := range m.fields {
+		s.WriteString(field.Label + "\n")
 		s.WriteString(m.inputs[i].View() + "\n\n")
 	}
 
@@ -177,7 +185,7 @@ func (m FormModel) handleSave() (FormModel, tea.Cmd) {
 	// validate required fields
 	for i, field := range m.fields {
 		if field.Required && strings.TrimSpace(m.inputs[i].Value()) == "" {
-			m.errorMsg = m.labels[i] + " required"
+			m.errorMsg = m.fields[i].Label + " required"
 			return m, nil
 		}
 	}

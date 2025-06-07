@@ -10,6 +10,8 @@ import (
 const (
 	MainMenuView ViewType = iota
 	LogVideoView
+	EditLogView
+	LogListView
 )
 
 type Model struct {
@@ -17,6 +19,8 @@ type Model struct {
 
 	mainMenu MainMenuModel
 	logVideo LogVideoModel
+	logList  LogListModel
+	editLog  EditLogModel
 }
 
 func (m Model) Init() tea.Cmd {
@@ -40,6 +44,14 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 	case NavigateMsg:
 		m.currentView = msg.View
+		if msg.View == LogListView {
+			m.logList = NewLogListModel()
+			return m, m.logList.Init()
+		}
+		if msg.View == EditLogView {
+			m.editLog = NewEditLogModel(msg.VideoID)
+			return m, m.editLog.Init()
+		}
 		return m, nil
 	}
 
@@ -48,6 +60,10 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.mainMenu, cmd = m.mainMenu.Update(msg)
 	case LogVideoView:
 		m.logVideo, cmd = m.logVideo.Update(msg)
+	case LogListView:
+		m.logList, cmd = m.logList.Update(msg)
+	case EditLogView:
+		m.editLog, cmd = m.editLog.Update(msg)
 	}
 
 	return m, cmd
@@ -61,6 +77,10 @@ func (m Model) View() string {
 		content = m.mainMenu.View()
 	case LogVideoView:
 		content = m.logVideo.View()
+	case LogListView:
+		content = m.logList.View()
+	case EditLogView:
+		content = m.editLog.View()
 	}
 
 	return content

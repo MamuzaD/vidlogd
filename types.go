@@ -2,23 +2,7 @@ package main
 
 import "time"
 
-// Form field indices
-const (
-	url = iota
-	title
-	channel
-	release
-	logDate
-	review
-)
-
 type ViewType int
-
-const (
-	MainMenuView ViewType = iota
-	LogVideoView
-	EditLogView
-)
 
 type NavigateMsg struct {
 	View    ViewType

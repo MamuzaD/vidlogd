@@ -17,6 +17,7 @@ func NewMainMenuModel() MainMenuModel {
 		cursor: 0,
 		choices: []string{
 			"log video",
+			"view logs",
 			"exit",
 		},
 	}
@@ -54,6 +55,10 @@ func (m MainMenuModel) handleSelection() (MainMenuModel, tea.Cmd) {
 			return NavigateMsg{View: LogVideoView}
 		}
 	case 1:
+		return m, func() tea.Msg {
+			return NavigateMsg{View: LogListView}
+		}
+	case 2:
 		return m, tea.Quit
 	}
 	return m, nil
