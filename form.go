@@ -2,6 +2,7 @@ package main
 
 import (
 	"strings"
+	"time"
 
 	"github.com/charmbracelet/bubbles/textinput"
 	tea "github.com/charmbracelet/bubbletea"
@@ -34,6 +35,7 @@ type FormModel struct {
 	buttonText string
 	onSave     func(FormModel) tea.Cmd
 	onCancel   func() tea.Cmd
+	lastURL    string // track last URL to detect changes
 }
 
 func NewForm(title string, fields []FormField, saveText string) FormModel {
@@ -92,6 +94,27 @@ func (m FormModel) Update(msg tea.Msg) (FormModel, tea.Cmd) {
 	var cmds []tea.Cmd
 
 	switch msg := msg.(type) {
+	case MetadataFetchedMsg:
+		// auto-fill form fields with YouTube metadata
+		if msg.Error != "" {
+			m.errorMsg = msg.Error
+		} else {
+			if msg.Metadata.Title != "" && len(m.inputs) > title {
+				m.inputs[title].SetValue(msg.Metadata.Title)
+			}
+			if msg.Metadata.Creator != "" && len(m.inputs) > channel {
+				m.inputs[channel].SetValue(msg.Metadata.Creator)
+			}
+			if msg.Metadata.ReleaseDate != "" && len(m.inputs) > release {
+				m.inputs[release].SetValue(msg.Metadata.ReleaseDate)
+			}
+			if len(m.inputs) > logDate {
+				currentDate := time.Now().Format("2006-01-02")
+				m.inputs[logDate].SetValue(currentDate)
+			}
+		}
+		return m, nil
+
 	case tea.KeyMsg:
 		switch msg.String() {
 		case "ctrl+c", "esc":
@@ -117,6 +140,16 @@ func (m FormModel) Update(msg tea.Msg) (FormModel, tea.Cmd) {
 		var cmd tea.Cmd
 		m.inputs[m.focused], cmd = m.inputs[m.focused].Update(msg)
 		cmds = append(cmds, cmd)
+
+		// check if URL and auto-fill metadata
+		if m.focused == url && len(m.inputs) > url {
+			currentURL := m.inputs[url].Value()
+			if currentURL != m.lastURL && isValidYouTubeURL(currentURL) {
+				m.lastURL = currentURL
+				// auto-fill metadata in background
+				cmds = append(cmds, fetchYouTubeMetadata(currentURL))
+			}
+		}
 	}
 
 	return m, tea.Batch(cmds...)

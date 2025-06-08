@@ -93,8 +93,15 @@ func (m LogVideoModel) Init() tea.Cmd {
 
 func (m LogVideoModel) Update(msg tea.Msg) (LogVideoModel, tea.Cmd) {
 	var cmd tea.Cmd
-	m.form, cmd = m.form.Update(msg)
-	return m, cmd
+
+	switch msg := msg.(type) {
+	case MetadataFetchedMsg:
+		m.form, cmd = m.form.Update(msg)
+		return m, cmd
+	default:
+		m.form, cmd = m.form.Update(msg)
+		return m, cmd
+	}
 }
 
 func (m LogVideoModel) View() string {
