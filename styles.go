@@ -9,6 +9,7 @@ var (
 	primaryColor      = lipgloss.Color("#D32F2F")
 	primaryBackground = lipgloss.Color("#A52A2A")
 	white             = lipgloss.Color("#FFFFFF")
+	gray              = lipgloss.Color("#909090")
 )
 
 var (
@@ -18,15 +19,58 @@ var (
 			BorderForeground(primaryColor).
 			Padding(1, 2)
 
+	// title style for `vidlogd`
 	titleStyle = lipgloss.NewStyle().
 			Foreground(primaryColor).
 			Bold(true).
 			Border(lipgloss.RoundedBorder()).
 			Padding(0, 2).
-			Margin(0)
+			Margin(0, 0, 1, 0).
+			AlignHorizontal(lipgloss.Center)
 
+	// items in main menu
 	menuItemStyle = lipgloss.NewStyle().
 			Padding(0, 2)
+
+	// normal form field style
+	formFieldStyle = lipgloss.NewStyle().
+			Border(lipgloss.RoundedBorder()).
+			BorderForeground(gray)
+
+	// focused form field
+	formFieldFocusedStyle = lipgloss.NewStyle().
+				Border(lipgloss.RoundedBorder()).
+				BorderForeground(primaryBackground)
+
+	// form button style
+	buttonStyle = lipgloss.NewStyle().
+			Border(lipgloss.RoundedBorder()).
+			Padding(0, 1)
+
+	buttonStyleFocused = lipgloss.NewStyle().
+				Border(lipgloss.RoundedBorder()).
+				BorderForeground(primaryColor).
+				Background(primaryBackground).
+				Padding(0, 1)
+
+	tableHeaderStyle = lipgloss.NewStyle().
+				BorderStyle(lipgloss.RoundedBorder()).
+				BorderBottom(true).
+				Background(primaryColor).
+				Foreground(white).
+				Bold(true).
+				Padding(0, 1)
+
+	// table styles
+	tableStyle = lipgloss.NewStyle().
+			Border(lipgloss.RoundedBorder()).
+			BorderForeground(white).
+			Padding(1, 2)
+
+	tableSelectedRowStyle = lipgloss.NewStyle().
+				Background(primaryBackground).
+				Foreground(white).
+				Bold(true)
 )
 
 // centerHorizontally centers content horizontally in the terminal

@@ -122,6 +122,12 @@ func NewVideoLogForm(editing bool, existingVideo *Video) FormModel {
 
 	form := NewForm(formTitle, fields, buttonText)
 	form.ratingValue = ratingValue
+
+	// store original URL when editing to prevent auto-fill for same video
+	if editing && existingVideo != nil {
+		form.lastURL = existingVideo.URL
+	}
+
 	return form
 }
 
@@ -282,7 +288,13 @@ func (m FormModel) View() string {
 			stars := m.renderRatingStars(i == m.focused)
 			s.WriteString(stars)
 		} else {
-			s.WriteString(m.inputs[i].View())
+			var styledInput string
+			if m.focused == i {
+				styledInput = formFieldFocusedStyle.Render(m.inputs[i].View())
+			} else {
+				styledInput = formFieldStyle.Render(m.inputs[i].View())
+			}
+			s.WriteString(styledInput)
 		}
 
 		// show field-specific error if field has been touched and has an error
@@ -294,9 +306,9 @@ func (m FormModel) View() string {
 
 	// save button
 	if m.focused == len(m.inputs) {
-		s.WriteString("> [" + m.buttonText + "] <\n\n")
+		s.WriteString(buttonStyleFocused.Render(m.buttonText))
 	} else {
-		s.WriteString("  [" + m.buttonText + "]\n\n")
+		s.WriteString(buttonStyle.Render(m.buttonText))
 	}
 
 	if m.fieldErrors[button] != "" {
@@ -309,9 +321,7 @@ func (m FormModel) View() string {
 // renderRatingStars renders the star rating display
 func (m FormModel) renderRatingStars(focused bool) string {
 	var s strings.Builder
-
-	s.WriteString("> ")
-
+	s.WriteString(" ")
 	// render 5 stars
 	for i := 1; i <= 5; i++ {
 		starValue := float64(i)
@@ -329,17 +339,23 @@ func (m FormModel) renderRatingStars(focused bool) string {
 
 	// show current rating text
 	if m.ratingValue == 0 {
-		s.WriteString("  (no rating)")
+		s.WriteString("  (no rating) ")
 	} else {
 		// only show decimal if not a whole number
 		if m.ratingValue == float64(int(m.ratingValue)) {
-			s.WriteString(fmt.Sprintf("  (%d/5)", int(m.ratingValue)))
+			s.WriteString(fmt.Sprintf("  (%d/5) ", int(m.ratingValue)))
 		} else {
-			s.WriteString(fmt.Sprintf("  (%.1f/5)", m.ratingValue))
+			s.WriteString(fmt.Sprintf("  (%.1f/5) ", m.ratingValue))
 		}
 	}
 
-	return s.String()
+	var styledRating string
+	if focused {
+		styledRating = formFieldFocusedStyle.Render(s.String())
+	} else {
+		styledRating = formFieldStyle.Render(s.String())
+	}
+	return styledRating
 }
 
 // nextInput moves focus to the next input

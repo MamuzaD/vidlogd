@@ -5,6 +5,7 @@ import (
 	"os"
 
 	tea "github.com/charmbracelet/bubbletea"
+	"github.com/charmbracelet/lipgloss"
 )
 
 const (
@@ -84,7 +85,6 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 }
 
 func (m Model) View() string {
-
 	var content string
 
 	switch m.currentView {
@@ -96,8 +96,9 @@ func (m Model) View() string {
 		content = m.logList.View()
 	}
 
+	title := centerHorizontally(titleStyle.Render("vidlogd"), lipgloss.Width(content))
 	// wrap content in popup
-	styledContent := popupStyle.Render(content)
+	styledContent := popupStyle.Render(title + "\n" + content)
 	// center the popup
 	if m.width > 0 && m.height > 0 {
 		return centerBoth("\n\n"+styledContent, m.width, m.height)

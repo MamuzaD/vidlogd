@@ -26,6 +26,12 @@ func NewLogListModel() LogListModel {
 		table.WithHeight(15),
 	)
 
+	s := table.DefaultStyles()
+	s.Header = tableHeaderStyle
+	s.Selected = tableSelectedRowStyle
+
+	t.SetStyles(s)
+
 	return LogListModel{
 		table: t,
 	}
@@ -150,6 +156,8 @@ func (m LogListModel) View() string {
 		return s.String()
 	}
 
-	s.WriteString(m.table.View())
+	tableContent := m.table.View()
+	styledTable := tableStyle.Render(tableContent)
+	s.WriteString(styledTable)
 	return s.String()
 }

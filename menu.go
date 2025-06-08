@@ -47,12 +47,14 @@ func NewMainMenuModel() MainMenuModel {
 		MenuItem{title: "exit"},
 	}
 
-	const defaultWidth = 80
+	const defaultWidth = 40
 	const listHeight = 14
 
 	l := list.New(items, MenuItemDelegate{}, defaultWidth, listHeight)
 	l.SetShowStatusBar(false)
+	l.SetFilteringEnabled(false)
 	l.SetShowTitle(false)
+	l.SetShowHelp(true)
 
 	return MainMenuModel{
 		list: l,
@@ -107,10 +109,6 @@ func (m MainMenuModel) handleSelection() (MainMenuModel, tea.Cmd) {
 
 func (m MainMenuModel) View() string {
 	width := m.list.Width()
-	if width == 0 {
-		width = 80 // fallback to default width
-	}
 
-	title := centerHorizontally(titleStyle.Render("vidlogd"), width)
-	return title + "\n\n" + centerHorizontally(m.list.View(), width)
+	return centerHorizontally(m.list.View(), width)
 }
