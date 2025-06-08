@@ -6,10 +6,28 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
+	"sort"
 	"time"
 )
 
 const videosFile = "videos.json"
+
+// sortVideosByLogDate sorts videos by log date, most recent first
+func sortVideosByLogDate(videos []Video) {
+	sort.Slice(videos, func(i, j int) bool {
+		// parse log dates for comparison
+		dateI, errI := time.Parse("2006-01-02", videos[i].LogDate)
+		dateJ, errJ := time.Parse("2006-01-02", videos[j].LogDate)
+
+		// if either date fails to parse, fall back to creation time
+		if errI != nil || errJ != nil {
+			return videos[i].CreatedAt.After(videos[j].CreatedAt)
+		}
+
+		// sort by log date, most recent first
+		return dateI.After(dateJ)
+	})
+}
 
 func loadVideos() ([]Video, error) {
 	if _, err := os.Stat(videosFile); os.IsNotExist(err) {
@@ -32,6 +50,9 @@ func loadVideos() ([]Video, error) {
 		return nil, fmt.Errorf("failed to parse videos file: %w", err)
 	}
 
+	// sort videos by log date, most recent first
+	sortVideosByLogDate(videos)
+
 	return videos, nil
 }
 
@@ -53,6 +74,9 @@ func saveVideo(video Video) error {
 	}
 
 	videos = append(videos, video)
+
+	// sort videos by log date, most recent first
+	sortVideosByLogDate(videos)
 
 	// marshal for pretty json
 	data, err := json.MarshalIndent(videos, "", "  ")
@@ -86,6 +110,9 @@ func updateVideo(updatedVideo Video) error {
 			break
 		}
 	}
+
+	// sort videos by log date, most recent first
+	sortVideosByLogDate(videos)
 
 	// marshal for pretty json
 	data, err := json.MarshalIndent(videos, "", "  ")
@@ -125,4 +152,38 @@ func findVideoByID(id string) (*Video, error) {
 	}
 
 	return nil, fmt.Errorf("video with ID %s not found", id)
+}
+
+func deleteVideo(id string) error {
+	videos, err := loadVideos()
+	if err != nil {
+		return fmt.Errorf("failed to load existing videos: %w", err)
+	}
+
+	// filter out the video with the specified ID
+	filteredVideos := make([]Video, 0, len(videos))
+	found := false
+	for _, video := range videos {
+		if video.ID != id {
+			filteredVideos = append(filteredVideos, video)
+		} else {
+			found = true
+		}
+	}
+
+	if !found {
+		return fmt.Errorf("video with ID %s not found", id)
+	}
+
+	// marshal for pretty json
+	data, err := json.MarshalIndent(filteredVideos, "", "  ")
+	if err != nil {
+		return fmt.Errorf("failed to marshal videos to JSON: %w", err)
+	}
+
+	if err := os.WriteFile(videosFile, data, 0644); err != nil {
+		return fmt.Errorf("failed to write videos file: %w", err)
+	}
+
+	return nil
 }

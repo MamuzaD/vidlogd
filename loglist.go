@@ -36,9 +36,34 @@ func (m LogListModel) Update(msg tea.Msg) (LogListModel, tea.Cmd) {
 	switch msg := msg.(type) {
 	case LoadVideosMsg:
 		m.videos = msg.videos
+		// adjust cursor if it's out of bounds after deletion
+		if m.cursor >= len(m.videos) && len(m.videos) > 0 {
+			m.cursor = len(m.videos) - 1
+		} else if len(m.videos) == 0 {
+			m.cursor = 0
+		}
+
 		return m, nil
 	case tea.KeyMsg:
 		switch msg.String() {
+		// delete video
+		case "x":
+			if len(m.videos) > 0 {
+				videoToDelete := m.videos[m.cursor]
+				return m, func() tea.Msg {
+					err := deleteVideo(videoToDelete.ID)
+					if err != nil {
+						return err
+					}
+					// reload videos after deletion
+					videos, err := loadVideos()
+					if err != nil {
+						return err
+					}
+					return LoadVideosMsg{videos: videos}
+				}
+			}
+			return m, nil
 		case "up", "k":
 			if m.cursor > 0 {
 				m.cursor--
