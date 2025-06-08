@@ -2,24 +2,59 @@ package main
 
 import (
 	"fmt"
-	"strings"
+	"io"
 
+	"github.com/charmbracelet/bubbles/list"
 	tea "github.com/charmbracelet/bubbletea"
 )
 
+type MenuItem struct {
+	title string
+}
+
+func (i MenuItem) FilterValue() string { return i.title }
+
+// necessary for list
+type MenuItemDelegate struct{}
+
+func (d MenuItemDelegate) Height() int                               { return 1 }
+func (d MenuItemDelegate) Spacing() int                              { return 0 }
+func (d MenuItemDelegate) Update(msg tea.Msg, m *list.Model) tea.Cmd { return nil }
+func (d MenuItemDelegate) Render(w io.Writer, m list.Model, index int, listItem list.Item) {
+	i, ok := listItem.(MenuItem)
+	if !ok {
+		return
+	}
+	var str string
+	if index == m.Index() {
+		str = "▶ " + i.title
+	} else {
+		str = "  " + i.title
+	}
+
+	fmt.Fprint(w, str)
+}
+
 type MainMenuModel struct {
-	cursor  int
-	choices []string
+	list list.Model
 }
 
 func NewMainMenuModel() MainMenuModel {
+	items := []list.Item{
+		MenuItem{title: "log video"},
+		MenuItem{title: "view logs"},
+		MenuItem{title: "exit"},
+	}
+
+	const defaultWidth = 80
+	const listHeight = 10
+
+	l := list.New(items, MenuItemDelegate{}, defaultWidth, listHeight)
+	l.Title = "vidlogd"
+	l.SetShowStatusBar(false)
+
 	return MainMenuModel{
-		cursor: 0,
-		choices: []string{
-			"log video",
-			"view logs",
-			"exit",
-		},
+		list: l,
 	}
 }
 
@@ -29,55 +64,46 @@ func (m MainMenuModel) Init() tea.Cmd {
 
 func (m MainMenuModel) Update(msg tea.Msg) (MainMenuModel, tea.Cmd) {
 	switch msg := msg.(type) {
+	case tea.WindowSizeMsg:
+		m.list.SetWidth(msg.Width)
+		return m, nil
+
 	case tea.KeyMsg:
-		switch msg.String() {
-		case "up", "k":
-			if m.cursor > 0 {
-				m.cursor--
-			}
-		case "down", "j":
-			if m.cursor < len(m.choices)-1 {
-				m.cursor++
-			}
+		switch keypress := msg.String(); keypress {
+		case "q", "ctrl+c":
+			return m, tea.Quit
+
 		case "enter", " ":
 			return m.handleSelection()
-		case "q":
-			return m, tea.Quit
 		}
 	}
-	return m, nil
+
+	var cmd tea.Cmd
+	m.list, cmd = m.list.Update(msg)
+	return m, cmd
 }
 
 func (m MainMenuModel) handleSelection() (MainMenuModel, tea.Cmd) {
-	switch m.cursor {
-	case 0:
+	selectedItem, ok := m.list.SelectedItem().(MenuItem)
+	if !ok {
+		return m, nil
+	}
+
+	switch selectedItem.title {
+	case "log video":
 		return m, func() tea.Msg {
 			return NavigateMsg{View: LogVideoView}
 		}
-	case 1:
+	case "view logs":
 		return m, func() tea.Msg {
 			return NavigateMsg{View: LogListView}
 		}
-	case 2:
+	case "exit":
 		return m, tea.Quit
 	}
 	return m, nil
 }
 
 func (m MainMenuModel) View() string {
-	var s strings.Builder
-
-	s.WriteString("Welcome to VidLogd!\n\n")
-	s.WriteString("What would you like to do?\n\n")
-
-	for i, choice := range m.choices {
-		cursor := " "
-		if m.cursor == i {
-			cursor = "▶"
-		}
-
-		s.WriteString(fmt.Sprintf("%s %s\n", cursor, choice))
-	}
-
-	return s.String()
+	return "\n" + m.list.View()
 }
