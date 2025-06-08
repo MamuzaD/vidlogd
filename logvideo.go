@@ -41,13 +41,19 @@ func NewLogVideoModel(videoID string) LogVideoModel {
 				if err := saveVideo(video); err != nil {
 					// TODO: add errors ui
 				}
-				return func() tea.Msg { return NavigateMsg{View: MainMenuView} }
+				// clear form by sending clear message then navigate
+				return tea.Batch(
+					func() tea.Msg { return ClearFormMsg{} },
+					func() tea.Msg { return NavigateMsg{View: MainMenuView} },
+				)
 			}
 		},
 		func() tea.Cmd {
 			if editing {
+				// when editing, cancel without saving (reset)
 				return func() tea.Msg { return NavigateMsg{View: LogListView} }
 			} else {
+				// when creating new, preserve form state and go back to main menu
 				return func() tea.Msg { return NavigateMsg{View: MainMenuView} }
 			}
 		},

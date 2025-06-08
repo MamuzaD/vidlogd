@@ -40,6 +40,11 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			}
 		}
 
+	case ClearFormMsg:
+		// clear the form by creating a new empty one
+		m.logVideo = NewLogVideoModel("")
+		return m, nil
+
 	case NavigateMsg:
 		m.currentView = msg.View
 		if msg.View == LogListView {
@@ -47,7 +52,11 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return m, m.logList.Init()
 		}
 		if msg.View == LogVideoView {
-			m.logVideo = NewLogVideoModel(msg.VideoID)
+			if msg.VideoID == "" && m.logVideo.videoID == "" {
+				// preserve existing new video form state
+			} else {
+				m.logVideo = NewLogVideoModel(msg.VideoID)
+			}
 			return m, m.logVideo.Init()
 		}
 		return m, nil

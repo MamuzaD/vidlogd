@@ -16,6 +16,7 @@ const (
 	release
 	logDate
 	review
+	button
 )
 
 type FieldType int
@@ -52,7 +53,7 @@ type FormModel struct {
 
 func NewForm(title string, fields []FormField, saveText string) FormModel {
 	inputs := make([]textinput.Model, len(fields))
-	fieldErrors := make([]string, len(fields))
+	fieldErrors := make([]string, button+1) // +1 to include space for button error
 	touched := make([]bool, len(fields))
 
 	for i, field := range fields {
@@ -147,6 +148,7 @@ func (m FormModel) Update(msg tea.Msg) (FormModel, tea.Cmd) {
 	case MetadataFetchedMsg:
 		// auto-fill form fields with YouTube metadata
 		if msg.Error != "" {
+			m.touched[url] = true // mark URL as touched so error shows
 			m.fieldErrors[url] = msg.Error
 		} else {
 			// remove any prev url error
@@ -244,6 +246,10 @@ func (m FormModel) View() string {
 		s.WriteString("  [" + m.buttonText + "]\n\n")
 	}
 
+	if m.fieldErrors[button] != "" {
+		s.WriteString(" ⚠ " + m.fieldErrors[button])
+	}
+
 	return s.String()
 }
 
@@ -280,36 +286,57 @@ func (m *FormModel) prevInput() {
 }
 
 // validateCurrentField validates the currently focused field
-func (m *FormModel) validateCurrentField() {
+func (m *FormModel) validateCurrentField() string {
 	if m.focused >= len(m.inputs) {
-		return
+		return ""
 	}
 
 	// mark field as touched
 	m.touched[m.focused] = true
 
-	field := m.fields[m.focused]
-	value := strings.TrimSpace(m.inputs[m.focused].Value())
+	return m.validateFieldByIndex(m.focused)
+}
+
+// validateFieldByIndex validates a specific field by index
+func (m *FormModel) validateFieldByIndex(index int) string {
+	if index >= len(m.inputs) || index >= len(m.fields) {
+		return ""
+	}
+
+	field := m.fields[index]
+	value := strings.TrimSpace(m.inputs[index].Value())
 
 	// clear previous error
-	m.fieldErrors[m.focused] = ""
+	m.fieldErrors[index] = ""
 
 	// skip validation if field is empty and not required
 	if value == "" && !field.Required {
-		return
+		return ""
+	}
+
+	var errorMsg string
+
+	// check if required
+	if field.Required && value == "" {
+		errorMsg = "field is required"
 	}
 
 	// validate based on field type
 	switch field.Type {
 	case FormFieldDate:
 		if !isValidDate(value) {
-			m.fieldErrors[m.focused] = "Invalid date format. Use YYYY-MM-DD"
+			errorMsg = "invalid date (YYYY-MM-DD)"
 		}
 	case FormFieldURL:
 		if !isValidYouTubeURL(value) {
-			m.fieldErrors[m.focused] = "Invalid YouTube URL"
+			errorMsg = "invalid youtube url"
 		}
 	}
+	// update field error
+	if errorMsg != "" {
+		m.fieldErrors[index] = errorMsg
+	}
+	return errorMsg
 }
 
 // isValidDate validates if the string is a valid date in YYYY-MM-DD format
@@ -330,30 +357,23 @@ func isValidDate(dateStr string) bool {
 }
 
 func (m FormModel) handleSave() (FormModel, tea.Cmd) {
+	hasErrors := false
+
 	// validate all fields first
-	for i, field := range m.fields {
+	for i := range m.fields {
 		m.touched[i] = true // mark all fields as touched when saving
 
-		value := strings.TrimSpace(m.inputs[i].Value())
-		m.fieldErrors[i] = "" // clear previous error
-
-		// check required fields
-		if field.Required && value == "" {
-			m.fieldErrors[i] = "This field is required"
-			continue
+		errorMsg := m.validateFieldByIndex(i)
+		if errorMsg != "" {
+			hasErrors = true
 		}
+	}
 
-		// validate field type
-		switch field.Type {
-		case FormFieldDate:
-			if value != "" && !isValidDate(value) {
-				m.fieldErrors[i] = "Invalid date format. Use YYYY-MM-DD"
-			}
-		case FormFieldURL:
-			if value != "" && !isValidYouTubeURL(value) {
-				m.fieldErrors[i] = "Invalid YouTube URL"
-			}
-		}
+	if hasErrors {
+		m.fieldErrors[button] = "errors in the form"
+		return m, nil
+	} else {
+		m.fieldErrors[button] = ""
 	}
 
 	if m.onSave != nil {
