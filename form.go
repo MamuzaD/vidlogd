@@ -1,6 +1,7 @@
 package main
 
 import (
+	"regexp"
 	"strings"
 	"time"
 
@@ -17,6 +18,15 @@ const (
 	review
 )
 
+type FieldType int
+
+const (
+	FormFieldDate FieldType = iota
+	FormFieldURL
+	FormFieldText
+	FormFieldRating
+)
+
 type FormField struct {
 	Placeholder string
 	Label       string
@@ -24,22 +34,26 @@ type FormField struct {
 	Value       string
 	CharLimit   int
 	Width       int
+	Type        FieldType
 }
 
 type FormModel struct {
-	title      string
-	inputs     []textinput.Model
-	fields     []FormField
-	focused    int
-	errorMsg   string
-	buttonText string
-	onSave     func(FormModel) tea.Cmd
-	onCancel   func() tea.Cmd
-	lastURL    string // track last URL to detect changes
+	title       string
+	inputs      []textinput.Model
+	fields      []FormField
+	focused     int
+	fieldErrors []string
+	touched     []bool
+	buttonText  string
+	onSave      func(FormModel) tea.Cmd
+	onCancel    func() tea.Cmd
+	lastURL     string
 }
 
 func NewForm(title string, fields []FormField, saveText string) FormModel {
 	inputs := make([]textinput.Model, len(fields))
+	fieldErrors := make([]string, len(fields))
+	touched := make([]bool, len(fields))
 
 	for i, field := range fields {
 		input := textinput.New()
@@ -58,12 +72,48 @@ func NewForm(title string, fields []FormField, saveText string) FormModel {
 	}
 
 	return FormModel{
-		title:      title,
-		inputs:     inputs,
-		fields:     fields,
-		focused:    0,
-		buttonText: saveText,
+		title:       title,
+		inputs:      inputs,
+		fields:      fields,
+		focused:     0,
+		fieldErrors: fieldErrors,
+		touched:     touched,
+		buttonText:  saveText,
 	}
+}
+
+func NewVideoLogForm(editing bool, existingVideo *Video) FormModel {
+	fields := []FormField{
+		{Placeholder: "https://youtube.com/watch?v=...", Label: "YouTube URL:", Required: true, CharLimit: 200, Width: 60, Type: FormFieldURL},
+		{Placeholder: "video title", Label: "Title:", Required: true, CharLimit: 100, Width: 50, Type: FormFieldText},
+		{Placeholder: "channel name", Label: "Channel:", Required: true, CharLimit: 50, Width: 50, Type: FormFieldText},
+		{Placeholder: "YYYY-MM-DD", Label: "Video Release Date:", Required: true, CharLimit: 10, Width: 12, Type: FormFieldDate},
+		{Placeholder: "YYYY-MM-DD", Label: "Log Date:", Required: true, CharLimit: 10, Width: 12, Type: FormFieldDate},
+		{Placeholder: "write your review...", Label: "Review:", Required: false, CharLimit: 500, Width: 60, Type: FormFieldText},
+	}
+
+	// pre-fill fields if editing
+	if editing && existingVideo != nil {
+		fields[url].Value = existingVideo.URL
+		fields[title].Value = existingVideo.Title
+		fields[channel].Value = existingVideo.Channel
+		fields[release].Value = existingVideo.ReleaseDate
+		fields[logDate].Value = existingVideo.LogDate
+		fields[review].Value = existingVideo.Review
+	}
+
+	var formTitle string
+	var buttonText string
+
+	if editing {
+		formTitle = "edit video log"
+		buttonText = "update video"
+	} else {
+		formTitle = "log a video"
+		buttonText = "save video"
+	}
+
+	return NewForm(formTitle, fields, buttonText)
 }
 
 func (m *FormModel) SetHandlers(onSave func(FormModel) tea.Cmd, onCancel func() tea.Cmd) {
@@ -97,20 +147,32 @@ func (m FormModel) Update(msg tea.Msg) (FormModel, tea.Cmd) {
 	case MetadataFetchedMsg:
 		// auto-fill form fields with YouTube metadata
 		if msg.Error != "" {
-			m.errorMsg = msg.Error
+			m.fieldErrors[url] = msg.Error
 		} else {
+			// remove any prev url error
+			m.fieldErrors[url] = ""
+
+			// prefill and remove errors for metadata fields
 			if msg.Metadata.Title != "" && len(m.inputs) > title {
 				m.inputs[title].SetValue(msg.Metadata.Title)
+				m.fieldErrors[title] = ""
+				// ensure title is visible by moving cursor to start
+				m.inputs[title].CursorStart()
 			}
 			if msg.Metadata.Creator != "" && len(m.inputs) > channel {
 				m.inputs[channel].SetValue(msg.Metadata.Creator)
+				m.fieldErrors[channel] = ""
+				// ensure channel is visible by moving cursor to start
+				m.inputs[channel].CursorStart()
 			}
 			if msg.Metadata.ReleaseDate != "" && len(m.inputs) > release {
 				m.inputs[release].SetValue(msg.Metadata.ReleaseDate)
+				m.fieldErrors[release] = ""
 			}
 			if len(m.inputs) > logDate {
 				currentDate := time.Now().Format("2006-01-02")
 				m.inputs[logDate].SetValue(currentDate)
+				m.fieldErrors[logDate] = ""
 			}
 		}
 		return m, nil
@@ -123,13 +185,16 @@ func (m FormModel) Update(msg tea.Msg) (FormModel, tea.Cmd) {
 			}
 			return m, nil
 		case "tab", "down":
+			m.validateCurrentField()
 			m.nextInput()
 		case "shift+tab", "up":
+			m.validateCurrentField()
 			m.prevInput()
 		case "enter":
 			if m.focused == len(m.inputs) {
 				return m.handleSave()
 			} else {
+				m.validateCurrentField()
 				m.nextInput()
 			}
 		}
@@ -160,14 +225,16 @@ func (m FormModel) View() string {
 
 	s.WriteString(m.title + "\n\n")
 
-	if m.errorMsg != "" {
-		s.WriteString("Error: " + m.errorMsg + "\n\n")
-	}
-
 	// render all input fields
 	for i, field := range m.fields {
 		s.WriteString(field.Label + "\n")
-		s.WriteString(m.inputs[i].View() + "\n\n")
+		s.WriteString(m.inputs[i].View())
+
+		// show field-specific error if field has been touched and has an error
+		if m.touched[i] && m.fieldErrors[i] != "" {
+			s.WriteString("\n  ⚠ " + m.fieldErrors[i])
+		}
+		s.WriteString("\n\n")
 	}
 
 	// save button
@@ -212,12 +279,80 @@ func (m *FormModel) prevInput() {
 	}
 }
 
+// validateCurrentField validates the currently focused field
+func (m *FormModel) validateCurrentField() {
+	if m.focused >= len(m.inputs) {
+		return
+	}
+
+	// mark field as touched
+	m.touched[m.focused] = true
+
+	field := m.fields[m.focused]
+	value := strings.TrimSpace(m.inputs[m.focused].Value())
+
+	// clear previous error
+	m.fieldErrors[m.focused] = ""
+
+	// skip validation if field is empty and not required
+	if value == "" && !field.Required {
+		return
+	}
+
+	// validate based on field type
+	switch field.Type {
+	case FormFieldDate:
+		if !isValidDate(value) {
+			m.fieldErrors[m.focused] = "Invalid date format. Use YYYY-MM-DD"
+		}
+	case FormFieldURL:
+		if !isValidYouTubeURL(value) {
+			m.fieldErrors[m.focused] = "Invalid YouTube URL"
+		}
+	}
+}
+
+// isValidDate validates if the string is a valid date in YYYY-MM-DD format
+func isValidDate(dateStr string) bool {
+	if dateStr == "" {
+		return false
+	}
+
+	// check format with regex first
+	dateRegex := regexp.MustCompile(`^\d{4}-\d{2}-\d{2}$`)
+	if !dateRegex.MatchString(dateStr) {
+		return false
+	}
+
+	// try to parse the date to ensure it's actually valid
+	_, err := time.Parse("2006-01-02", dateStr)
+	return err == nil
+}
+
 func (m FormModel) handleSave() (FormModel, tea.Cmd) {
-	// validate required fields
+	// validate all fields first
 	for i, field := range m.fields {
-		if field.Required && strings.TrimSpace(m.inputs[i].Value()) == "" {
-			m.errorMsg = m.fields[i].Label + " required"
-			return m, nil
+		m.touched[i] = true // mark all fields as touched when saving
+
+		value := strings.TrimSpace(m.inputs[i].Value())
+		m.fieldErrors[i] = "" // clear previous error
+
+		// check required fields
+		if field.Required && value == "" {
+			m.fieldErrors[i] = "This field is required"
+			continue
+		}
+
+		// validate field type
+		switch field.Type {
+		case FormFieldDate:
+			if value != "" && !isValidDate(value) {
+				m.fieldErrors[i] = "Invalid date format. Use YYYY-MM-DD"
+			}
+		case FormFieldURL:
+			if value != "" && !isValidYouTubeURL(value) {
+				m.fieldErrors[i] = "Invalid YouTube URL"
+			}
 		}
 	}
 
