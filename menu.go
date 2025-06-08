@@ -79,10 +79,5 @@ func (m MainMenuModel) View() string {
 		s.WriteString(fmt.Sprintf("%s %s\n", cursor, choice))
 	}
 
-	s.WriteString("\n")
-
-	instructions := "↑/↓ (or j/k) to navigate, Enter to select, 'q' to quit"
-	s.WriteString(instructions + "\n")
-
 	return s.String()
 }

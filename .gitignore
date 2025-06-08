@@ -16,3 +16,7 @@ build/
 # Operating System specific files
 .DS_Store
 Thumbs.db
+
+# Test files
+videos.json
+test

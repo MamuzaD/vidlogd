@@ -61,7 +61,7 @@ func (m LogListModel) handleSelection() (LogListModel, tea.Cmd) {
 
 	selectedVideo := m.videos[m.cursor]
 	return m, func() tea.Msg {
-		return NavigateMsg{View: EditLogView, VideoID: selectedVideo.ID}
+		return NavigateMsg{View: LogVideoView, VideoID: selectedVideo.ID}
 	}
 }
 
@@ -109,10 +109,7 @@ func (m LogListModel) View() string {
 			s.WriteString(fmt.Sprintf("   Review: %s\n", review))
 		}
 
-		s.WriteString("\n")
 	}
-
-	s.WriteString("↑/↓ (or j/k) to navigate, Enter to edit selected video, 'q' to go back to main menu\n")
 
 	return s.String()
 }

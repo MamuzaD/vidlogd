@@ -26,14 +26,14 @@ type FormField struct {
 }
 
 type FormModel struct {
-	title    string
-	inputs   []textinput.Model
-	fields   []FormField
-	focused  int
-	errorMsg string
-	saveText string
-	onSave   func(FormModel) tea.Cmd
-	onCancel func() tea.Cmd
+	title      string
+	inputs     []textinput.Model
+	fields     []FormField
+	focused    int
+	errorMsg   string
+	buttonText string
+	onSave     func(FormModel) tea.Cmd
+	onCancel   func() tea.Cmd
 }
 
 func NewForm(title string, fields []FormField, saveText string) FormModel {
@@ -56,11 +56,11 @@ func NewForm(title string, fields []FormField, saveText string) FormModel {
 	}
 
 	return FormModel{
-		title:    title,
-		inputs:   inputs,
-		fields:   fields,
-		focused:  0,
-		saveText: saveText,
+		title:      title,
+		inputs:     inputs,
+		fields:     fields,
+		focused:    0,
+		buttonText: saveText,
 	}
 }
 
@@ -139,12 +139,10 @@ func (m FormModel) View() string {
 
 	// save button
 	if m.focused == len(m.inputs) {
-		s.WriteString("> [" + m.saveText + "] <\n\n")
+		s.WriteString("> [" + m.buttonText + "] <\n\n")
 	} else {
-		s.WriteString("  [" + m.saveText + "]\n\n")
+		s.WriteString("  [" + m.buttonText + "]\n\n")
 	}
-
-	s.WriteString("tab/↑↓ to navigate, enter to save, esc to cancel")
 
 	return s.String()
 }
