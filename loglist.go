@@ -140,7 +140,7 @@ func (m LogListModel) handleSelection() (LogListModel, tea.Cmd) {
 	if selectedRow < len(m.videos) {
 		selectedVideo := m.videos[selectedRow]
 		return m, func() tea.Msg {
-			return NavigateMsg{View: LogVideoView, VideoID: selectedVideo.ID}
+			return NavigateMsg{View: LogDetailsView, VideoID: selectedVideo.ID}
 		}
 	}
 	return m, nil

@@ -12,14 +12,16 @@ const (
 	MainMenuView ViewType = iota
 	LogVideoView
 	LogListView
+	LogDetailsView
 )
 
 type Model struct {
 	currentView ViewType
 
-	mainMenu MainMenuModel
-	logVideo LogVideoModel
-	logList  LogListModel
+	mainMenu   MainMenuModel
+	logVideo   LogVideoModel
+	logList    LogListModel
+	logDetails LogDetailsModel
 
 	// Terminal dimensions for centering
 	width  int
@@ -69,6 +71,10 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			}
 			return m, m.logVideo.Init()
 		}
+		if msg.View == LogDetailsView {
+			m.logDetails = NewLogDetailsModel(msg.VideoID)
+			return m, m.logDetails.Init()
+		}
 		return m, nil
 	}
 
@@ -79,6 +85,8 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.logVideo, cmd = m.logVideo.Update(msg)
 	case LogListView:
 		m.logList, cmd = m.logList.Update(msg)
+	case LogDetailsView:
+		m.logDetails, cmd = m.logDetails.Update(msg)
 	}
 
 	return m, cmd
@@ -94,6 +102,8 @@ func (m Model) View() string {
 		content = m.logVideo.View()
 	case LogListView:
 		content = m.logList.View()
+	case LogDetailsView:
+		content = m.logDetails.View()
 	}
 
 	title := centerHorizontally(titleStyle.Render("vidlogd"), lipgloss.Width(content))

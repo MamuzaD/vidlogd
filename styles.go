@@ -71,6 +71,12 @@ var (
 				Background(primaryBackground).
 				Foreground(white).
 				Bold(true)
+
+	// log details styles
+	reviewStyle = lipgloss.NewStyle().
+			Border(lipgloss.RoundedBorder()).
+			Padding(1).
+			Width(70)
 )
 
 // centerHorizontally centers content horizontally in the terminal
