@@ -1,6 +1,7 @@
 package main
 
 import (
+	"fmt"
 	"regexp"
 	"strings"
 	"time"
@@ -15,6 +16,7 @@ const (
 	channel
 	release
 	logDate
+	rating
 	review
 	button
 )
@@ -49,6 +51,7 @@ type FormModel struct {
 	onSave      func(FormModel) tea.Cmd
 	onCancel    func() tea.Cmd
 	lastURL     string
+	ratingValue float64 // current rating value for the rating field (0-5 in 0.5 increments)
 }
 
 func NewForm(title string, fields []FormField, saveText string) FormModel {
@@ -90,9 +93,11 @@ func NewVideoLogForm(editing bool, existingVideo *Video) FormModel {
 		{Placeholder: "channel name", Label: "Channel:", Required: true, CharLimit: 50, Width: 50, Type: FormFieldText},
 		{Placeholder: "YYYY-MM-DD", Label: "Video Release Date:", Required: true, CharLimit: 10, Width: 12, Type: FormFieldDate},
 		{Placeholder: "YYYY-MM-DD", Label: "Log Date:", Required: true, CharLimit: 10, Width: 12, Type: FormFieldDate},
+		{Placeholder: "", Label: "Rating:", Required: false, CharLimit: 1, Width: 20, Type: FormFieldRating},
 		{Placeholder: "write your review...", Label: "Review:", Required: false, CharLimit: 500, Width: 60, Type: FormFieldText},
 	}
 
+	var ratingValue float64
 	// pre-fill fields if editing
 	if editing && existingVideo != nil {
 		fields[url].Value = existingVideo.URL
@@ -100,6 +105,7 @@ func NewVideoLogForm(editing bool, existingVideo *Video) FormModel {
 		fields[channel].Value = existingVideo.Channel
 		fields[release].Value = existingVideo.ReleaseDate
 		fields[logDate].Value = existingVideo.LogDate
+		ratingValue = existingVideo.Rating
 		fields[review].Value = existingVideo.Review
 	}
 
@@ -114,7 +120,9 @@ func NewVideoLogForm(editing bool, existingVideo *Video) FormModel {
 		buttonText = "save video"
 	}
 
-	return NewForm(formTitle, fields, buttonText)
+	form := NewForm(formTitle, fields, buttonText)
+	form.ratingValue = ratingValue
+	return form
 }
 
 func (m *FormModel) SetHandlers(onSave func(FormModel) tea.Cmd, onCancel func() tea.Cmd) {
@@ -135,6 +143,10 @@ func (m FormModel) GetAllValues() []string {
 		values[i] = m.inputs[i].Value()
 	}
 	return values
+}
+
+func (m FormModel) GetRating() float64 {
+	return m.ratingValue
 }
 
 func (m FormModel) Init() tea.Cmd {
@@ -199,6 +211,40 @@ func (m FormModel) Update(msg tea.Msg) (FormModel, tea.Cmd) {
 				m.validateCurrentField()
 				m.nextInput()
 			}
+		case "left", "h":
+			if m.focused == rating {
+				if m.ratingValue > 0 {
+					m.ratingValue -= 0.5
+				}
+				return m, nil
+			}
+		case "right", "l":
+			if m.focused == rating {
+				if m.ratingValue < 5 {
+					m.ratingValue += 0.5
+				}
+				return m, nil
+			}
+		case "1", "2", "3", "4", "5":
+			if m.focused == rating {
+				if val := int(msg.String()[0] - '0'); val >= 1 && val <= 5 {
+					m.ratingValue = float64(val)
+				}
+				return m, nil
+			}
+		case "0":
+			if m.focused == rating {
+				m.ratingValue = 0 // no rating
+				return m, nil
+			}
+		case ".":
+			if m.focused == rating {
+				// add 0.5 to current rating if it's a whole number
+				if m.ratingValue == float64(int(m.ratingValue)) && m.ratingValue < 5 {
+					m.ratingValue += 0.5
+				}
+				return m, nil
+			}
 		}
 	}
 
@@ -230,7 +276,14 @@ func (m FormModel) View() string {
 	// render all input fields
 	for i, field := range m.fields {
 		s.WriteString(field.Label + "\n")
-		s.WriteString(m.inputs[i].View())
+
+		if field.Type == FormFieldRating {
+			// render rating stars
+			stars := m.renderRatingStars(i == m.focused)
+			s.WriteString(stars)
+		} else {
+			s.WriteString(m.inputs[i].View())
+		}
 
 		// show field-specific error if field has been touched and has an error
 		if m.touched[i] && m.fieldErrors[i] != "" {
@@ -248,6 +301,41 @@ func (m FormModel) View() string {
 
 	if m.fieldErrors[button] != "" {
 		s.WriteString(" ⚠ " + m.fieldErrors[button])
+	}
+
+	return s.String()
+}
+
+// renderRatingStars renders the star rating display
+func (m FormModel) renderRatingStars(focused bool) string {
+	var s strings.Builder
+
+	s.WriteString("> ")
+
+	// render 5 stars
+	for i := 1; i <= 5; i++ {
+		starValue := float64(i)
+		if m.ratingValue >= starValue {
+			s.WriteString("★") // filled star
+		} else if m.ratingValue >= starValue-0.5 {
+			s.WriteString("⯨") // half star (using different character)
+		} else {
+			s.WriteString("☆") // empty star
+		}
+		if i < 5 {
+			s.WriteString(" ")
+		}
+	}
+
+	// show current rating text
+	if m.ratingValue == 0 {
+		s.WriteString("  (no rating)")
+	} else {
+		s.WriteString(fmt.Sprintf("  (%.1f/5)", m.ratingValue))
+	}
+
+	if focused {
+		s.WriteString("\n  Use ← → or h/l keys for 0.5 increments, 1-5 for whole stars, . to add 0.5, 0 for no rating")
 	}
 
 	return s.String()

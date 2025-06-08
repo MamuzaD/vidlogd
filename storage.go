@@ -136,6 +136,7 @@ func createVideoFromForm(form FormModel) Video {
 		ReleaseDate: form.GetValue(release),
 		LogDate:     form.GetValue(logDate),
 		Review:      form.GetValue(review),
+		Rating:      form.GetRating(),
 	}
 }
 

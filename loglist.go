@@ -124,7 +124,24 @@ func (m LogListModel) View() string {
 		}
 
 		s.WriteString(fmt.Sprintf("%s%s\n", cursor, title))
-		s.WriteString(fmt.Sprintf("   Channel: %s | Logged: %s\n", channel, logDate))
+
+		// show rating stars if available
+		ratingStr := ""
+		if video.Rating > 0 {
+			for i := 1; i <= 5; i++ {
+				starValue := float64(i)
+				if video.Rating >= starValue {
+					ratingStr += "★"
+				} else if video.Rating >= starValue-0.5 {
+					ratingStr += "⯨" // half star
+				} else {
+					ratingStr += "☆"
+				}
+			}
+			ratingStr = fmt.Sprintf("   Rating: %s\n", ratingStr)
+		}
+
+		s.WriteString(fmt.Sprintf("   Channel: %s\n   Logged: %s\n%s\n", channel, logDate, ratingStr))
 
 		if video.Review != "" {
 			review := video.Review
