@@ -25,14 +25,15 @@ func (d MenuItemDelegate) Render(w io.Writer, m list.Model, index int, listItem 
 	if !ok {
 		return
 	}
-	var str string
+
+	style := menuItemStyle
 	if index == m.Index() {
-		str = "▶ " + i.title
-	} else {
-		str = "  " + i.title
+		style = style.Background(primaryColor).Foreground(white)
 	}
 
-	fmt.Fprint(w, str)
+	styledText := style.Render(i.title)
+	centeredText := centerHorizontally(styledText, m.Width())
+	fmt.Fprint(w, centeredText)
 }
 
 type MainMenuModel struct {
@@ -47,11 +48,11 @@ func NewMainMenuModel() MainMenuModel {
 	}
 
 	const defaultWidth = 80
-	const listHeight = 10
+	const listHeight = 14
 
 	l := list.New(items, MenuItemDelegate{}, defaultWidth, listHeight)
-	l.Title = "vidlogd"
 	l.SetShowStatusBar(false)
+	l.SetShowTitle(false)
 
 	return MainMenuModel{
 		list: l,
@@ -105,5 +106,11 @@ func (m MainMenuModel) handleSelection() (MainMenuModel, tea.Cmd) {
 }
 
 func (m MainMenuModel) View() string {
-	return "\n" + m.list.View()
+	width := m.list.Width()
+	if width == 0 {
+		width = 80 // fallback to default width
+	}
+
+	title := centerHorizontally(titleStyle.Render("vidlogd"), width)
+	return title + "\n\n" + centerHorizontally(m.list.View(), width)
 }

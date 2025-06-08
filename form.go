@@ -51,7 +51,7 @@ type FormModel struct {
 	onSave      func(FormModel) tea.Cmd
 	onCancel    func() tea.Cmd
 	lastURL     string
-	ratingValue float64 // current rating value for the rating field (0-5 in 0.5 increments)
+	ratingValue float64 // current rating value for the rating field
 }
 
 func NewForm(title string, fields []FormField, saveText string) FormModel {
@@ -318,7 +318,7 @@ func (m FormModel) renderRatingStars(focused bool) string {
 		if m.ratingValue >= starValue {
 			s.WriteString("★") // filled star
 		} else if m.ratingValue >= starValue-0.5 {
-			s.WriteString("⯨") // half star (using different character)
+			s.WriteString("⯨") // half star
 		} else {
 			s.WriteString("☆") // empty star
 		}
@@ -331,11 +331,12 @@ func (m FormModel) renderRatingStars(focused bool) string {
 	if m.ratingValue == 0 {
 		s.WriteString("  (no rating)")
 	} else {
-		s.WriteString(fmt.Sprintf("  (%.1f/5)", m.ratingValue))
-	}
-
-	if focused {
-		s.WriteString("\n  Use ← → or h/l keys for 0.5 increments, 1-5 for whole stars, . to add 0.5, 0 for no rating")
+		// only show decimal if not a whole number
+		if m.ratingValue == float64(int(m.ratingValue)) {
+			s.WriteString(fmt.Sprintf("  (%d/5)", int(m.ratingValue)))
+		} else {
+			s.WriteString(fmt.Sprintf("  (%.1f/5)", m.ratingValue))
+		}
 	}
 
 	return s.String()

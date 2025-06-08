@@ -19,16 +19,25 @@ type Model struct {
 	mainMenu MainMenuModel
 	logVideo LogVideoModel
 	logList  LogListModel
+
+	// Terminal dimensions for centering
+	width  int
+	height int
 }
 
 func (m Model) Init() tea.Cmd {
-	return tea.SetWindowTitle("VidLogd")
+	return tea.SetWindowTitle("vidlogd")
 }
 
 func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	var cmd tea.Cmd
 
 	switch msg := msg.(type) {
+	case tea.WindowSizeMsg:
+		m.width = msg.Width
+		m.height = msg.Height
+		return m, nil
+
 	case tea.KeyMsg:
 		switch msg.String() {
 		case "ctrl+c":
@@ -75,6 +84,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 }
 
 func (m Model) View() string {
+
 	var content string
 
 	switch m.currentView {
@@ -86,7 +96,14 @@ func (m Model) View() string {
 		content = m.logList.View()
 	}
 
-	return content
+	// wrap content in popup
+	styledContent := popupStyle.Render(content)
+	// center the popup
+	if m.width > 0 && m.height > 0 {
+		return centerBoth("\n\n"+styledContent, m.width, m.height)
+	}
+
+	return styledContent
 }
 
 func main() {
