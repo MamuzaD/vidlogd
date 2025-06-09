@@ -49,6 +49,9 @@ var (
 			Width(15).
 			AlignHorizontal(lipgloss.Left)
 
+	starStyle = lipgloss.NewStyle().
+			Foreground(primaryColor)
+
 	modeStyle = lipgloss.NewStyle().
 			Foreground(gray).
 			Width(50).

@@ -260,14 +260,18 @@ func (m FormModel) Update(msg tea.Msg) (FormModel, tea.Cmd) {
 			if msg.Metadata.Title != "" && len(m.inputs) > title {
 				m.inputs[title].SetValue(msg.Metadata.Title)
 				m.fieldErrors[title] = ""
-				// ensure title is visible by moving cursor to start
-				m.inputs[title].CursorStart()
+				if len(m.inputs[title].Value()) > m.fields[title].Width {
+					// ensure title is visible by moving cursor to start
+					m.inputs[title].CursorStart()
+				}
 			}
 			if msg.Metadata.Creator != "" && len(m.inputs) > channel {
 				m.inputs[channel].SetValue(msg.Metadata.Creator)
 				m.fieldErrors[channel] = ""
-				// ensure channel is visible by moving cursor to start
-				m.inputs[channel].CursorStart()
+				if len(m.inputs[channel].Value()) > m.fields[channel].Width {
+					// ensure channel is visible by moving cursor to start
+					m.inputs[channel].CursorStart()
+				}
 			}
 			if msg.Metadata.ReleaseDate != "" && len(m.inputs) > release {
 				m.inputs[release].SetValue(msg.Metadata.ReleaseDate)
@@ -459,13 +463,15 @@ func (m FormModel) renderRatingStars(focused bool) string {
 	// render 5 stars
 	for i := 1; i <= 5; i++ {
 		starValue := float64(i)
+		var star string
 		if m.ratingValue >= starValue {
-			s.WriteString("★") // filled star
+			star = starStyle.Render("★") // filled star
 		} else if m.ratingValue >= starValue-0.5 {
-			s.WriteString("⯨") // half star
+			star = starStyle.Render("⯨") // half star
 		} else {
-			s.WriteString("☆") // empty star
+			star = "☆" // empty star
 		}
+		s.WriteString(star)
 		if i < 5 {
 			s.WriteString(" ")
 		}
