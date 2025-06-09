@@ -59,6 +59,13 @@ func NewKeyMap(useVim bool) KeyMap {
 		Exit: key.NewBinding(key.WithKeys("ctrl+c"), key.WithHelp("ctrl+c", "exit")),
 		Back: key.NewBinding(key.WithKeys("q"), key.WithHelp("q", "back")),
 		Help: key.NewBinding(key.WithKeys("?"), key.WithHelp("?", "more")),
+		
+		// navigation
+		Up: key.NewBinding(key.WithKeys("up", "k"), key.WithHelp("↑/k", "up")),
+		Down: key.NewBinding(key.WithKeys("down", "j"), key.WithHelp("↓/j", "down")),
+		Left: key.NewBinding(key.WithKeys("left", "h"), key.WithHelp("←/h", "left")),
+		Right: key.NewBinding(key.WithKeys("right", "l"), key.WithHelp("→/l", "right")),
+
 
 		// common actions (include space for select)
 		Select: key.NewBinding(key.WithKeys("enter"), key.WithHelp("enter", "select")),
@@ -76,12 +83,6 @@ func NewKeyMap(useVim bool) KeyMap {
 	}
 
 	if useVim {
-		// vim-style navigation
-		km.Up = key.NewBinding(key.WithKeys("k"), key.WithHelp("k", "up"))
-		km.Down = key.NewBinding(key.WithKeys("j"), key.WithHelp("j", "down"))
-		km.Left = key.NewBinding(key.WithKeys("h"), key.WithHelp("h", "left"))
-		km.Right = key.NewBinding(key.WithKeys("l"), key.WithHelp("l", "right"))
-
 		// vim-specific form navigation
 		km.NextField = key.NewBinding(key.WithKeys("down", "j"), key.WithHelp("↓/j", "next field"))
 		km.PrevField = key.NewBinding(key.WithKeys("up", "k"), key.WithHelp("↑/k", "prev field"))
@@ -97,12 +98,6 @@ func NewKeyMap(useVim bool) KeyMap {
 		km.RatingUp = key.NewBinding(key.WithKeys("l"), key.WithHelp("l", "increase rating"))
 		km.RatingDown = key.NewBinding(key.WithKeys("h"), key.WithHelp("h", "decrease rating"))
 	} else {
-		// standard navigation
-		km.Up = key.NewBinding(key.WithKeys("up", "k"), key.WithHelp("↑/k", "up"))
-		km.Down = key.NewBinding(key.WithKeys("down", "j"), key.WithHelp("↓/j", "down"))
-		km.Left = key.NewBinding(key.WithKeys("left", "h"), key.WithHelp("←/h", "left"))
-		km.Right = key.NewBinding(key.WithKeys("right", "l"), key.WithHelp("→/l", "right"))
-
 		// standard form navigation
 		km.NextField = key.NewBinding(key.WithKeys("down", "tab"), key.WithHelp("↓/tab", "next field"))
 		km.PrevField = key.NewBinding(key.WithKeys("up", "shift+tab"), key.WithHelp("↑/shift+tab", "prev field"))

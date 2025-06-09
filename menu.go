@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"io"
 
+	"github.com/charmbracelet/bubbles/key"
 	"github.com/charmbracelet/bubbles/list"
 	tea "github.com/charmbracelet/bubbletea"
 )
@@ -72,11 +73,10 @@ func (m MainMenuModel) Update(msg tea.Msg) (MainMenuModel, tea.Cmd) {
 		return m, nil
 
 	case tea.KeyMsg:
-		switch keypress := msg.String(); keypress {
-		case "q", "ctrl+c":
+		if key.Matches(msg, GlobalKeyMap.Exit, GlobalKeyMap.Back) {
 			return m, tea.Quit
-
-		case "enter", " ":
+		}
+		if key.Matches(msg, GlobalKeyMap.Select) {
 			return m.handleSelection()
 		}
 	}

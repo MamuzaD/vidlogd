@@ -5,6 +5,8 @@ import (
 	"io"
 	"strings"
 
+	"github.com/charmbracelet/bubbles/help"
+	"github.com/charmbracelet/bubbles/key"
 	"github.com/charmbracelet/bubbles/list"
 	tea "github.com/charmbracelet/bubbletea"
 )
@@ -36,9 +38,43 @@ func (d ActionItemDelegate) Render(w io.Writer, m list.Model, index int, listIte
 	fmt.Fprint(w, styledText)
 }
 
+type LogDetailsKeyMap struct{}
+
+func (k LogDetailsKeyMap) ShortHelp() []key.Binding {
+	return []key.Binding{
+		GlobalKeyMap.Up,
+		GlobalKeyMap.Down,
+		GlobalKeyMap.Select,
+		GlobalKeyMap.Edit,
+		GlobalKeyMap.Delete,
+		GlobalKeyMap.Back,
+		GlobalKeyMap.Help,
+	}
+}
+
+func (k LogDetailsKeyMap) FullHelp() [][]key.Binding {
+	return [][]key.Binding{
+		{
+			GlobalKeyMap.Up,
+			GlobalKeyMap.Down,
+			GlobalKeyMap.Select,
+		},
+		{
+			GlobalKeyMap.Edit,
+			GlobalKeyMap.Delete,
+			GlobalKeyMap.Back,
+		},
+		{
+			GlobalKeyMap.Exit,
+			GlobalKeyMap.Help,
+		},
+	}
+}
+
 type LogDetailsModel struct {
 	video       *Video
 	actionsList list.Model
+	help        help.Model
 }
 
 func NewLogDetailsModel(videoID string) LogDetailsModel {
@@ -62,9 +98,13 @@ func NewLogDetailsModel(videoID string) LogDetailsModel {
 	l.SetShowTitle(false)
 	l.SetShowHelp(false)
 
+	h := help.New()
+	h.ShowAll = false // start with compact help
+
 	return LogDetailsModel{
 		video:       video,
 		actionsList: l,
+		help:        h,
 	}
 }
 
@@ -75,8 +115,11 @@ func (m LogDetailsModel) Init() tea.Cmd {
 func (m LogDetailsModel) Update(msg tea.Msg) (LogDetailsModel, tea.Cmd) {
 	switch msg := msg.(type) {
 	case tea.KeyMsg:
-		switch msg.String() {
-		case "e": // quick edit shortcut
+		switch {
+		case key.Matches(msg, GlobalKeyMap.Help):
+			m.help.ShowAll = !m.help.ShowAll
+			return m, nil
+		case key.Matches(msg, GlobalKeyMap.Edit): // quick edit shortcut
 			if m.video != nil {
 				return m, func() tea.Msg {
 					return NavigateMsg{
@@ -85,7 +128,7 @@ func (m LogDetailsModel) Update(msg tea.Msg) (LogDetailsModel, tea.Cmd) {
 					}
 				}
 			}
-		case "x": // quick delete shortcut
+		case key.Matches(msg, GlobalKeyMap.Delete): // quick delete shortcut
 			if m.video != nil {
 				if err := deleteVideo(m.video.ID); err == nil {
 					return m, func() tea.Msg {
@@ -93,7 +136,7 @@ func (m LogDetailsModel) Update(msg tea.Msg) (LogDetailsModel, tea.Cmd) {
 					}
 				}
 			}
-		case "enter", " ":
+		case key.Matches(msg, GlobalKeyMap.Select):
 			selectedItem, ok := m.actionsList.SelectedItem().(ActionItem)
 			if !ok {
 				return m, nil
@@ -122,7 +165,7 @@ func (m LogDetailsModel) Update(msg tea.Msg) (LogDetailsModel, tea.Cmd) {
 					return NavigateMsg{View: LogListView}
 				}
 			}
-		case "q", "esc":
+		case key.Matches(msg, GlobalKeyMap.Back):
 			return m, func() tea.Msg {
 				return NavigateMsg{View: LogListView}
 			}
@@ -177,6 +220,9 @@ func (m LogDetailsModel) View() string {
 
 	s.WriteString("actions" + "\n\n")
 	s.WriteString(m.actionsList.View() + "\n")
+
+	keymap := LogDetailsKeyMap{}
+	s.WriteString("\n" + m.help.View(keymap))
 
 	return s.String()
 }

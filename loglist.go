@@ -3,13 +3,49 @@ package main
 import (
 	"strings"
 
+	"github.com/charmbracelet/bubbles/help"
+	"github.com/charmbracelet/bubbles/key"
 	"github.com/charmbracelet/bubbles/table"
 	tea "github.com/charmbracelet/bubbletea"
 )
 
+type LogListKeyMap struct{}
+
+func (k LogListKeyMap) ShortHelp() []key.Binding {
+	return []key.Binding{
+		GlobalKeyMap.Up,
+		GlobalKeyMap.Down,
+		GlobalKeyMap.Select,
+		GlobalKeyMap.Edit,
+		GlobalKeyMap.Delete,
+		GlobalKeyMap.Back,
+		GlobalKeyMap.Help,
+	}
+}
+
+func (k LogListKeyMap) FullHelp() [][]key.Binding {
+	return [][]key.Binding{
+		{
+			GlobalKeyMap.Up,
+			GlobalKeyMap.Down,
+			GlobalKeyMap.Select,
+		},
+		{
+			GlobalKeyMap.Edit,
+			GlobalKeyMap.Delete,
+			GlobalKeyMap.Back,
+		},
+		{
+			GlobalKeyMap.Exit,
+			GlobalKeyMap.Help,
+		},
+	}
+}
+
 type LogListModel struct {
 	table  table.Model
 	videos []Video
+	help   help.Model
 }
 
 func NewLogListModel() LogListModel {
@@ -32,8 +68,12 @@ func NewLogListModel() LogListModel {
 
 	t.SetStyles(s)
 
+	h := help.New()
+	h.ShowAll = false // start with compact help
+
 	return LogListModel{
 		table: t,
+		help:  h,
 	}
 }
 
@@ -60,9 +100,25 @@ func (m LogListModel) Update(msg tea.Msg) (LogListModel, tea.Cmd) {
 		m.updateTableRows()
 		return m, nil
 	case tea.KeyMsg:
-		switch msg.String() {
-		// delete video
-		case "x":
+		switch {
+		case key.Matches(msg, GlobalKeyMap.Help):
+			m.help.ShowAll = !m.help.ShowAll
+			return m, nil
+		case key.Matches(msg, GlobalKeyMap.Edit): // quick edit shortcut
+			if len(m.videos) > 0 {
+				selectedRow := m.table.Cursor()
+				if selectedRow < len(m.videos) {
+					videoToEdit := m.videos[selectedRow]
+					return m, func() tea.Msg {
+						return NavigateMsg{
+							View:    LogVideoView,
+							VideoID: videoToEdit.ID,
+						}
+					}
+				}
+			}
+			return m, nil
+		case key.Matches(msg, GlobalKeyMap.Delete): // quick delete shortcut
 			if len(m.videos) > 0 {
 				selectedRow := m.table.Cursor()
 				if selectedRow < len(m.videos) {
@@ -82,7 +138,7 @@ func (m LogListModel) Update(msg tea.Msg) (LogListModel, tea.Cmd) {
 				}
 			}
 			return m, nil
-		case "enter", " ":
+		case key.Matches(msg, GlobalKeyMap.Select):
 			return m.handleSelection()
 		}
 	}
@@ -153,11 +209,19 @@ func (m LogListModel) View() string {
 
 	if len(m.videos) == 0 {
 		s.WriteString("no videos logged yet\n\n")
+		// Add help even when no videos
+		keymap := LogListKeyMap{}
+		s.WriteString(m.help.View(keymap))
 		return s.String()
 	}
 
 	tableContent := m.table.View()
 	styledTable := tableStyle.Render(tableContent)
 	s.WriteString(styledTable)
+
+	// Add help at the bottom
+	keymap := LogListKeyMap{}
+	s.WriteString("\n\n" + m.help.View(keymap))
+
 	return s.String()
 }
