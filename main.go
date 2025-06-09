@@ -118,6 +118,9 @@ func (m Model) View() string {
 }
 
 func main() {
+	// Initialize global keymap (vim mode = false for now)
+	InitKeyMap(true)
+
 	m := Model{
 		currentView: MainMenuView,
 		mainMenu:    NewMainMenuModel(),

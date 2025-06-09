@@ -20,7 +20,7 @@ func NewLogVideoModel(videoID string) LogVideoModel {
 		}
 	}
 
-	form := NewVideoLogForm(editing, existingVideo)
+	form := NewVideoLogForm(editing, existingVideo, VimEnabled)
 
 	form.SetHandlers(
 		func(f FormModel) tea.Cmd {

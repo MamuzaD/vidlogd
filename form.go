@@ -3,9 +3,14 @@ package main
 import (
 	"fmt"
 	"regexp"
+	"strconv"
 	"strings"
 	"time"
 
+	"github.com/atotto/clipboard"
+	"github.com/charmbracelet/bubbles/cursor"
+	"github.com/charmbracelet/bubbles/help"
+	"github.com/charmbracelet/bubbles/key"
 	"github.com/charmbracelet/bubbles/textinput"
 	tea "github.com/charmbracelet/bubbletea"
 )
@@ -52,9 +57,67 @@ type FormModel struct {
 	onCancel    func() tea.Cmd
 	lastURL     string
 	ratingValue float64 // current rating value for the rating field
+	help        help.Model
+	// vim mode support
+	vimEnabled bool
+	vimMode    string
 }
 
-func NewForm(title string, fields []FormField, saveText string) FormModel {
+// FormKeyMap implements help.KeyMap for the form
+type FormKeyMap struct {
+	onRating   bool
+	vimEnabled bool
+	vimMode    string
+}
+
+func (k FormKeyMap) ShortHelp() []key.Binding {
+	keys := []key.Binding{
+		GlobalKeyMap.NextField,
+		GlobalKeyMap.PrevField,
+		GlobalKeyMap.Select,
+		GlobalKeyMap.Help,
+	}
+
+	return keys
+}
+
+func (k FormKeyMap) FullHelp() [][]key.Binding {
+	baseKeys := [][]key.Binding{
+		{
+			GlobalKeyMap.NextField,
+			GlobalKeyMap.PrevField,
+			GlobalKeyMap.Select,
+		},
+		{
+			GlobalKeyMap.Save,
+			GlobalKeyMap.Cancel,
+			GlobalKeyMap.Help,
+		},
+	}
+
+	// add vim column if vim is enabled
+	if k.vimEnabled {
+		vimKeys := []key.Binding{
+			GlobalKeyMap.VisualMode,
+			GlobalKeyMap.Paste,
+			GlobalKeyMap.Yank,
+		}
+		if k.vimMode == "normal" {
+			vimKeys = append(vimKeys, GlobalKeyMap.InsertMode)
+		} else {
+			vimKeys = append(vimKeys, GlobalKeyMap.NormalMode)
+		}
+		baseKeys = append(baseKeys, vimKeys)
+	}
+
+	if k.onRating {
+		baseKeys = append(baseKeys, []key.Binding{GlobalKeyMap.Rating})
+	}
+
+	return baseKeys
+}
+
+func NewForm(title string, fields []FormField, saveText string, vimEnabled bool) FormModel {
 	inputs := make([]textinput.Model, len(fields))
 	fieldErrors := make([]string, button+1) // +1 to include space for button error
 	touched := make([]bool, len(fields))
@@ -69,10 +132,28 @@ func NewForm(title string, fields []FormField, saveText string) FormModel {
 		if field.Value != "" {
 			input.SetValue(field.Value)
 		}
+
+		// input.Cursor.SetMode(cursor.CursorHide)
+		// // set cursor mode based on vim mode
+		if vimEnabled {
+			input.Cursor.SetMode(cursor.CursorStatic) // start in normal mode
+		} else {
+			input.Cursor.SetMode(cursor.CursorBlink) // always blink in non-vim mode
+		}
+
 		if i == 0 {
 			input.Focus()
 		}
 		inputs[i] = input
+	}
+
+	h := help.New()
+	h.ShowAll = false // start with compact help
+
+	// start in insert mode for non-vim, normal mode for vim
+	vimMode := "insert"
+	if vimEnabled {
+		vimMode = "normal"
 	}
 
 	return FormModel{
@@ -83,10 +164,13 @@ func NewForm(title string, fields []FormField, saveText string) FormModel {
 		fieldErrors: fieldErrors,
 		touched:     touched,
 		buttonText:  saveText,
+		help:        h,
+		vimEnabled:  vimEnabled,
+		vimMode:     vimMode,
 	}
 }
 
-func NewVideoLogForm(editing bool, existingVideo *Video) FormModel {
+func NewVideoLogForm(editing bool, existingVideo *Video, vimEnabled bool) FormModel {
 	fields := []FormField{
 		{Placeholder: "https://youtube.com/watch?v=...", Label: "YouTube URL:", Required: true, CharLimit: 200, Width: 60, Type: FormFieldURL},
 		{Placeholder: "video title", Label: "Title:", Required: true, CharLimit: 100, Width: 50, Type: FormFieldText},
@@ -120,7 +204,7 @@ func NewVideoLogForm(editing bool, existingVideo *Video) FormModel {
 		buttonText = "save video"
 	}
 
-	form := NewForm(formTitle, fields, buttonText)
+	form := NewForm(formTitle, fields, buttonText, vimEnabled)
 	form.ratingValue = ratingValue
 
 	// store original URL when editing to prevent auto-fill for same video
@@ -198,52 +282,88 @@ func (m FormModel) Update(msg tea.Msg) (FormModel, tea.Cmd) {
 		return m, nil
 
 	case tea.KeyMsg:
-		switch msg.String() {
-		case "ctrl+c", "esc":
+		switch {
+		case key.Matches(msg, GlobalKeyMap.Help):
+			m.help.ShowAll = !m.help.ShowAll
+			return m, nil
+		case key.Matches(msg, GlobalKeyMap.Exit), key.Matches(msg, GlobalKeyMap.Cancel):
 			if m.onCancel != nil {
 				return m, m.onCancel()
 			}
 			return m, nil
-		case "tab", "down":
-			m.validateCurrentField()
-			m.nextInput()
-		case "shift+tab", "up":
-			m.validateCurrentField()
-			m.prevInput()
-		case "enter":
+		// vim keys
+		case key.Matches(msg, GlobalKeyMap.InsertMode):
+			// only handle if vim is enabled and we're in normal mode
+			if m.vimEnabled && m.vimMode == "normal" {
+				m.vimMode = "insert"
+				// enable cursor blinking in insert mode
+				if m.focused < len(m.inputs) {
+					m.inputs[m.focused].Cursor.SetMode(cursor.CursorBlink)
+				}
+				return m, textinput.Blink
+			}
+		case key.Matches(msg, GlobalKeyMap.NormalMode):
+			// only handle if vim is enabled and we're in insert mode
+			if m.vimEnabled && m.vimMode == "insert" {
+				m.vimMode = "normal"
+				// disable cursor blinking in normal mode
+				if m.focused < len(m.inputs) {
+					m.inputs[m.focused].Cursor.SetMode(cursor.CursorStatic)
+				}
+				return m, nil
+			}
+		case key.Matches(msg, GlobalKeyMap.Paste):
+			if m.vimEnabled && m.vimMode == "normal" {
+				// get clipboard content
+				clipboardContent, err := clipboard.ReadAll()
+				if err != nil {
+					return m, nil
+				}
+				if m.focused < len(m.inputs) {
+					m.inputs[m.focused].SetValue(clipboardContent)
+				}
+			}
+		case key.Matches(msg, GlobalKeyMap.NextField):
+			if !m.vimEnabled || m.vimMode == "normal" {
+				m.validateCurrentField()
+				m.nextInput()
+			}
+		case key.Matches(msg, GlobalKeyMap.PrevField):
+			if !m.vimEnabled || m.vimMode == "normal" {
+				m.validateCurrentField()
+				m.prevInput()
+			}
+		case key.Matches(msg, GlobalKeyMap.Save):
+			return m.handleSave()
+		case key.Matches(msg, GlobalKeyMap.Select):
 			if m.focused == len(m.inputs) {
 				return m.handleSave()
 			} else {
 				m.validateCurrentField()
 				m.nextInput()
 			}
-		case "left", "h":
+		case key.Matches(msg, GlobalKeyMap.RatingDown):
 			if m.focused == rating {
 				if m.ratingValue > 0 {
 					m.ratingValue -= 0.5
 				}
 				return m, nil
 			}
-		case "right", "l":
+		case key.Matches(msg, GlobalKeyMap.RatingUp):
 			if m.focused == rating {
 				if m.ratingValue < 5 {
 					m.ratingValue += 0.5
 				}
 				return m, nil
 			}
-		case "1", "2", "3", "4", "5":
+		case key.Matches(msg, GlobalKeyMap.Rating):
 			if m.focused == rating {
-				if val := int(msg.String()[0] - '0'); val >= 1 && val <= 5 {
-					m.ratingValue = float64(val)
-				}
+				ratingStr := msg.String()
+				rating, _ := strconv.ParseFloat(ratingStr, 64)
+				m.ratingValue = rating
 				return m, nil
 			}
-		case "0":
-			if m.focused == rating {
-				m.ratingValue = 0 // no rating
-				return m, nil
-			}
-		case ".":
+		case key.Matches(msg, GlobalKeyMap.RatingHalf):
 			if m.focused == rating {
 				// add 0.5 to current rating if it's a whole number
 				if m.ratingValue == float64(int(m.ratingValue)) && m.ratingValue < 5 {
@@ -254,20 +374,23 @@ func (m FormModel) Update(msg tea.Msg) (FormModel, tea.Cmd) {
 		}
 	}
 
+	// only update text inputs if not in vim normal mode
+	shouldUpdateInput := !m.vimEnabled || m.vimMode == "insert"
+
 	// update the focused input
-	if m.focused < len(m.inputs) {
+	if m.focused < len(m.inputs) && shouldUpdateInput {
 		var cmd tea.Cmd
 		m.inputs[m.focused], cmd = m.inputs[m.focused].Update(msg)
 		cmds = append(cmds, cmd)
+	}
 
-		// check if URL and auto-fill metadata
-		if m.focused == url && len(m.inputs) > url {
-			currentURL := m.inputs[url].Value()
-			if currentURL != m.lastURL && isValidYouTubeURL(currentURL) {
-				m.lastURL = currentURL
-				// auto-fill metadata in background
-				cmds = append(cmds, fetchYouTubeMetadata(currentURL))
-			}
+	// check if URL and auto-fill metadata - regardless of vim mode
+	if m.focused == url && len(m.inputs) > url {
+		currentURL := m.inputs[url].Value()
+		if currentURL != m.lastURL && isValidYouTubeURL(currentURL) {
+			m.lastURL = currentURL
+			// auto-fill metadata in background
+			cmds = append(cmds, fetchYouTubeMetadata(currentURL))
 		}
 	}
 
@@ -277,7 +400,15 @@ func (m FormModel) Update(msg tea.Msg) (FormModel, tea.Cmd) {
 func (m FormModel) View() string {
 	var s strings.Builder
 
-	s.WriteString(m.title + "\n\n")
+	s.WriteString(headerStyle.Render(m.title))
+
+	// show vim mode status if vim is enabled
+	if m.vimEnabled {
+		modeStr := strings.ToUpper(m.vimMode)
+		s.WriteString(modeStyle.Render(modeStr))
+	}
+
+	s.WriteString("\n\n")
 
 	// render all input fields
 	for i, field := range m.fields {
@@ -314,6 +445,9 @@ func (m FormModel) View() string {
 	if m.fieldErrors[button] != "" {
 		s.WriteString(" ⚠ " + m.fieldErrors[button])
 	}
+
+	keymap := FormKeyMap{onRating: m.focused == rating, vimEnabled: m.vimEnabled, vimMode: m.vimMode}
+	s.WriteString("\n\n" + m.help.View(keymap))
 
 	return s.String()
 }

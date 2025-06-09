@@ -42,6 +42,18 @@ var (
 				Border(lipgloss.RoundedBorder()).
 				BorderForeground(primaryBackground)
 
+	headerStyle = lipgloss.NewStyle().
+			Foreground(white).
+			Bold(true).
+			BorderBottom(true).
+			Width(15).
+			AlignHorizontal(lipgloss.Left)
+
+	modeStyle = lipgloss.NewStyle().
+			Foreground(gray).
+			Width(50).
+			AlignHorizontal(lipgloss.Right)
+
 	// form button style
 	buttonStyle = lipgloss.NewStyle().
 			Border(lipgloss.RoundedBorder()).
