@@ -16,8 +16,8 @@ const videosFile = "videos.json"
 func sortVideosByLogDate(videos []Video) {
 	sort.Slice(videos, func(i, j int) bool {
 		// parse log dates for comparison
-		dateI, errI := time.Parse("2006-01-02", videos[i].LogDate)
-		dateJ, errJ := time.Parse("2006-01-02", videos[j].LogDate)
+		dateI, errI := time.Parse("2006-01-02 3:04 PM", videos[i].LogDate)
+		dateJ, errJ := time.Parse("2006-01-02 3:04 PM", videos[j].LogDate)
 
 		// if either date fails to parse, fall back to creation time
 		if errI != nil || errJ != nil {

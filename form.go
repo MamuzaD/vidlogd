@@ -30,6 +30,7 @@ type FieldType int
 
 const (
 	FormFieldDate FieldType = iota
+	FormFieldDateHour
 	FormFieldURL
 	FormFieldText
 	FormFieldRating
@@ -175,8 +176,8 @@ func NewVideoLogForm(editing bool, existingVideo *Video, vimEnabled bool) FormMo
 		{Placeholder: "https://youtube.com/watch?v=...", Label: "YouTube URL:", Required: true, CharLimit: 200, Width: 60, Type: FormFieldURL},
 		{Placeholder: "video title", Label: "Title:", Required: true, CharLimit: 100, Width: 50, Type: FormFieldText},
 		{Placeholder: "channel name", Label: "Channel:", Required: true, CharLimit: 50, Width: 50, Type: FormFieldText},
-		{Placeholder: "YYYY-MM-DD", Label: "Video Release Date:", Required: true, CharLimit: 10, Width: 12, Type: FormFieldDate},
-		{Placeholder: "YYYY-MM-DD", Label: "Log Date:", Required: true, CharLimit: 10, Width: 12, Type: FormFieldDate},
+		{Placeholder: "YYYY-MM-DD", Label: "Video Release Date:", Required: true, CharLimit: 16, Width: 18, Type: FormFieldDate},
+		{Placeholder: "YYYY-MM-DD HH:MM AM/PM", Label: "Log Date:", Required: true, CharLimit: 19, Width: 21, Type: FormFieldDateHour},
 		{Placeholder: "", Label: "Rating:", Required: false, CharLimit: 1, Width: 20, Type: FormFieldRating},
 		{Placeholder: "write your review...", Label: "Review:", Required: false, CharLimit: 500, Width: 60, Type: FormFieldText},
 	}
@@ -278,7 +279,7 @@ func (m FormModel) Update(msg tea.Msg) (FormModel, tea.Cmd) {
 				m.fieldErrors[release] = ""
 			}
 			if len(m.inputs) > logDate {
-				currentDate := time.Now().Format("2006-01-02")
+				currentDate := time.Now().Format("2006-01-02 3:04 PM")
 				m.inputs[logDate].SetValue(currentDate)
 				m.fieldErrors[logDate] = ""
 			}
@@ -572,6 +573,10 @@ func (m *FormModel) validateFieldByIndex(index int) string {
 		if !isValidDate(value) {
 			errorMsg = "invalid date (YYYY-MM-DD)"
 		}
+	case FormFieldDateHour:
+		if !isValidDateHour(value) {
+			errorMsg = "invalid date (YYYY-MM-DD HH:MM AM/PM)"
+		}
 	case FormFieldURL:
 		if !isValidYouTubeURL(value) {
 			errorMsg = "invalid youtube url"
@@ -582,6 +587,23 @@ func (m *FormModel) validateFieldByIndex(index int) string {
 		m.fieldErrors[index] = errorMsg
 	}
 	return errorMsg
+}
+
+// isValidDateHour validates if the string is a valid date in YYYY-MM-DD HH:MM AM/PM format
+func isValidDateHour(dateStr string) bool {
+	if dateStr == "" {
+		return false
+	}
+
+	// check format with regex first - supports both 12:34 AM and 1:23 PM formats
+	dateRegex := regexp.MustCompile(`^\d{4}-\d{2}-\d{2} \d{1,2}:\d{2} (AM|PM)$`)
+	if !dateRegex.MatchString(dateStr) {
+		return false
+	}
+
+	// try to parse the date to ensure it's actually valid
+	_, err := time.Parse("2006-01-02 3:04 PM", dateStr)
+	return err == nil
 }
 
 // isValidDate validates if the string is a valid date in YYYY-MM-DD format
