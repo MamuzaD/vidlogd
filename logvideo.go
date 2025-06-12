@@ -20,7 +20,7 @@ func NewLogVideoModel(videoID string) LogVideoModel {
 		}
 	}
 
-	form := NewVideoLogForm(editing, existingVideo, VimEnabled)
+	form := NewVideoLogForm(editing, existingVideo)
 
 	form.SetHandlers(
 		func(f FormModel) tea.Cmd {
@@ -81,4 +81,9 @@ func (m LogVideoModel) Update(msg tea.Msg) (LogVideoModel, tea.Cmd) {
 
 func (m LogVideoModel) View() string {
 	return m.form.View()
+}
+
+// UpdateVimMode updates the vim mode setting for the form
+func (m *LogVideoModel) UpdateVimMode() {
+	m.form.UpdateVimMode()
 }

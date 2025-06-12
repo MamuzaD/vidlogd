@@ -3,15 +3,17 @@ package main
 import "github.com/charmbracelet/bubbles/key"
 
 // Global keymap instance
-var (
-	GlobalKeyMap KeyMap
-	VimEnabled   bool
-)
+var GlobalKeyMap KeyMap
 
-// Initialize global keymap (call this in main)
-func InitKeyMap(useVim bool) {
-	GlobalKeyMap = NewKeyMap(useVim)
-	VimEnabled = useVim
+// Initialize global keymap
+func InitKeyMap() {
+	// Load settings to get vim preference
+	UpdateKeyMap()
+}
+
+// Update keymap based on current VimMotions setting
+func UpdateKeyMap() {
+	GlobalKeyMap = NewKeyMap(Settings.VimMotions)
 }
 
 type KeyMap struct {
@@ -59,13 +61,12 @@ func NewKeyMap(useVim bool) KeyMap {
 		Exit: key.NewBinding(key.WithKeys("ctrl+c"), key.WithHelp("ctrl+c", "exit")),
 		Back: key.NewBinding(key.WithKeys("q"), key.WithHelp("q", "back")),
 		Help: key.NewBinding(key.WithKeys("?"), key.WithHelp("?", "more")),
-		
-		// navigation
-		Up: key.NewBinding(key.WithKeys("up", "k"), key.WithHelp("↑/k", "up")),
-		Down: key.NewBinding(key.WithKeys("down", "j"), key.WithHelp("↓/j", "down")),
-		Left: key.NewBinding(key.WithKeys("left", "h"), key.WithHelp("←/h", "left")),
-		Right: key.NewBinding(key.WithKeys("right", "l"), key.WithHelp("→/l", "right")),
 
+		// navigation
+		Up:    key.NewBinding(key.WithKeys("up", "k"), key.WithHelp("↑/k", "up")),
+		Down:  key.NewBinding(key.WithKeys("down", "j"), key.WithHelp("↓/j", "down")),
+		Left:  key.NewBinding(key.WithKeys("left", "h"), key.WithHelp("←/h", "left")),
+		Right: key.NewBinding(key.WithKeys("right", "l"), key.WithHelp("→/l", "right")),
 
 		// common actions (include space for select)
 		Select: key.NewBinding(key.WithKeys("enter"), key.WithHelp("enter", "select")),

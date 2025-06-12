@@ -60,15 +60,13 @@ type FormModel struct {
 	ratingValue float64 // current rating value for the rating field
 	help        help.Model
 	// vim mode support
-	vimEnabled bool
-	vimMode    string
+	vimMode string
 }
 
 // FormKeyMap implements help.KeyMap for the form
 type FormKeyMap struct {
-	onRating   bool
-	vimEnabled bool
-	vimMode    string
+	onRating bool
+	vimMode  string
 }
 
 func (k FormKeyMap) ShortHelp() []key.Binding {
@@ -97,7 +95,7 @@ func (k FormKeyMap) FullHelp() [][]key.Binding {
 	}
 
 	// add vim column if vim is enabled
-	if k.vimEnabled {
+	if Settings.VimMotions {
 		vimKeys := []key.Binding{
 			GlobalKeyMap.VisualMode,
 			GlobalKeyMap.Paste,
@@ -118,7 +116,7 @@ func (k FormKeyMap) FullHelp() [][]key.Binding {
 	return baseKeys
 }
 
-func NewForm(title string, fields []FormField, saveText string, vimEnabled bool) FormModel {
+func NewForm(title string, fields []FormField, saveText string) FormModel {
 	inputs := make([]textinput.Model, len(fields))
 	fieldErrors := make([]string, button+1) // +1 to include space for button error
 	touched := make([]bool, len(fields))
@@ -134,9 +132,8 @@ func NewForm(title string, fields []FormField, saveText string, vimEnabled bool)
 			input.SetValue(field.Value)
 		}
 
-		// input.Cursor.SetMode(cursor.CursorHide)
-		// // set cursor mode based on vim mode
-		if vimEnabled {
+		// set cursor mode based on vim mode
+		if Settings.VimMotions {
 			input.Cursor.SetMode(cursor.CursorStatic) // start in normal mode
 		} else {
 			input.Cursor.SetMode(cursor.CursorBlink) // always blink in non-vim mode
@@ -153,7 +150,7 @@ func NewForm(title string, fields []FormField, saveText string, vimEnabled bool)
 
 	// start in insert mode for non-vim, normal mode for vim
 	vimMode := "insert"
-	if vimEnabled {
+	if Settings.VimMotions {
 		vimMode = "normal"
 	}
 
@@ -166,12 +163,11 @@ func NewForm(title string, fields []FormField, saveText string, vimEnabled bool)
 		touched:     touched,
 		buttonText:  saveText,
 		help:        h,
-		vimEnabled:  vimEnabled,
 		vimMode:     vimMode,
 	}
 }
 
-func NewVideoLogForm(editing bool, existingVideo *Video, vimEnabled bool) FormModel {
+func NewVideoLogForm(editing bool, existingVideo *Video) FormModel {
 	fields := []FormField{
 		{Placeholder: "https://youtube.com/watch?v=...", Label: "YouTube URL:", Required: true, CharLimit: 200, Width: 60, Type: FormFieldURL},
 		{Placeholder: "video title", Label: "Title:", Required: true, CharLimit: 100, Width: 50, Type: FormFieldText},
@@ -205,7 +201,7 @@ func NewVideoLogForm(editing bool, existingVideo *Video, vimEnabled bool) FormMo
 		buttonText = "save video"
 	}
 
-	form := NewForm(formTitle, fields, buttonText, vimEnabled)
+	form := NewForm(formTitle, fields, buttonText)
 	form.ratingValue = ratingValue
 
 	// store original URL when editing to prevent auto-fill for same video
@@ -219,6 +215,31 @@ func NewVideoLogForm(editing bool, existingVideo *Video, vimEnabled bool) FormMo
 func (m *FormModel) SetHandlers(onSave func(FormModel) tea.Cmd, onCancel func() tea.Cmd) {
 	m.onSave = onSave
 	m.onCancel = onCancel
+}
+
+// updates the vim mode setting for the form
+func (m *FormModel) UpdateVimMode() {
+	if Settings.VimMotions {
+		m.vimMode = "normal"
+		// update cursor mode for all inputs
+		for i := range m.inputs {
+			if i == m.focused {
+				m.inputs[i].Cursor.SetMode(cursor.CursorStatic) // focused input gets static cursor in normal mode
+			} else {
+				m.inputs[i].Cursor.SetMode(cursor.CursorStatic)
+			}
+		}
+	} else {
+		m.vimMode = "insert"
+		// set cursor mode for all inputs
+		for i := range m.inputs {
+			if i == m.focused {
+				m.inputs[i].Cursor.SetMode(cursor.CursorBlink) // focused input gets blinking cursor in non-vim mode
+			} else {
+				m.inputs[i].Cursor.SetMode(cursor.CursorHide) // unfocused inputs hide cursor
+			}
+		}
+	}
 }
 
 func (m FormModel) GetValue(index int) string {
@@ -299,7 +320,7 @@ func (m FormModel) Update(msg tea.Msg) (FormModel, tea.Cmd) {
 		// vim keys
 		case key.Matches(msg, GlobalKeyMap.InsertMode):
 			// only handle if vim is enabled and we're in normal mode
-			if m.vimEnabled && m.vimMode == "normal" {
+			if Settings.VimMotions && m.vimMode == "normal" {
 				m.vimMode = "insert"
 				// enable cursor blinking in insert mode
 				if m.focused < len(m.inputs) {
@@ -309,7 +330,7 @@ func (m FormModel) Update(msg tea.Msg) (FormModel, tea.Cmd) {
 			}
 		case key.Matches(msg, GlobalKeyMap.NormalMode):
 			// only handle if vim is enabled and we're in insert mode
-			if m.vimEnabled && m.vimMode == "insert" {
+			if Settings.VimMotions && m.vimMode == "insert" {
 				m.vimMode = "normal"
 				// disable cursor blinking in normal mode
 				if m.focused < len(m.inputs) {
@@ -318,7 +339,7 @@ func (m FormModel) Update(msg tea.Msg) (FormModel, tea.Cmd) {
 				return m, nil
 			}
 		case key.Matches(msg, GlobalKeyMap.Paste):
-			if m.vimEnabled && m.vimMode == "normal" {
+			if Settings.VimMotions && m.vimMode == "normal" {
 				// get clipboard content
 				clipboardContent, err := clipboard.ReadAll()
 				if err != nil {
@@ -329,12 +350,12 @@ func (m FormModel) Update(msg tea.Msg) (FormModel, tea.Cmd) {
 				}
 			}
 		case key.Matches(msg, GlobalKeyMap.NextField):
-			if !m.vimEnabled || m.vimMode == "normal" {
+			if !Settings.VimMotions || m.vimMode == "normal" {
 				m.validateCurrentField()
 				m.nextInput()
 			}
 		case key.Matches(msg, GlobalKeyMap.PrevField):
-			if !m.vimEnabled || m.vimMode == "normal" {
+			if !Settings.VimMotions || m.vimMode == "normal" {
 				m.validateCurrentField()
 				m.prevInput()
 			}
@@ -380,7 +401,7 @@ func (m FormModel) Update(msg tea.Msg) (FormModel, tea.Cmd) {
 	}
 
 	// only update text inputs if not in vim normal mode
-	shouldUpdateInput := !m.vimEnabled || m.vimMode == "insert"
+	shouldUpdateInput := !Settings.VimMotions || m.vimMode == "insert"
 
 	// update the focused input
 	if m.focused < len(m.inputs) && shouldUpdateInput {
@@ -408,7 +429,7 @@ func (m FormModel) View() string {
 	s.WriteString(headerStyle.Render(m.title))
 
 	// show vim mode status if vim is enabled
-	if m.vimEnabled {
+	if Settings.VimMotions {
 		modeStr := strings.ToUpper(m.vimMode)
 		s.WriteString(modeStyle.Render(modeStr))
 	}
@@ -451,7 +472,7 @@ func (m FormModel) View() string {
 		s.WriteString(" ⚠ " + m.fieldErrors[button])
 	}
 
-	keymap := FormKeyMap{onRating: m.focused == rating, vimEnabled: m.vimEnabled, vimMode: m.vimMode}
+	keymap := FormKeyMap{onRating: m.focused == rating, vimMode: m.vimMode}
 	s.WriteString("\n\n" + m.help.View(keymap))
 
 	return s.String()

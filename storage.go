@@ -10,8 +10,6 @@ import (
 	"time"
 )
 
-const videosFile = "videos.json"
-
 // sortVideosByLogDate sorts videos by log date, most recent first
 func sortVideosByLogDate(videos []Video) {
 	sort.Slice(videos, func(i, j int) bool {
@@ -30,13 +28,18 @@ func sortVideosByLogDate(videos []Video) {
 }
 
 func loadVideos() ([]Video, error) {
-	if _, err := os.Stat(videosFile); os.IsNotExist(err) {
+	videosPath, err := getVideosFilePath()
+	if err != nil {
+		return nil, fmt.Errorf("failed to get videos file path: %w", err)
+	}
+
+	if _, err := os.Stat(videosPath); os.IsNotExist(err) {
 		// file doesn't exist
 		return []Video{}, nil
 	}
 
 	// read file
-	data, err := os.ReadFile(videosFile)
+	data, err := os.ReadFile(videosPath)
 	if err != nil {
 		return nil, fmt.Errorf("failed to read videos file: %w", err)
 	}
@@ -84,7 +87,12 @@ func saveVideo(video Video) error {
 		return fmt.Errorf("failed to marshal videos to JSON: %w", err)
 	}
 
-	if err := os.WriteFile(videosFile, data, 0644); err != nil {
+	videosPath, err := getVideosFilePath()
+	if err != nil {
+		return fmt.Errorf("failed to get videos file path: %w", err)
+	}
+
+	if err := os.WriteFile(videosPath, data, 0644); err != nil {
 		return fmt.Errorf("failed to write videos file: %w", err)
 	}
 
@@ -120,7 +128,12 @@ func updateVideo(updatedVideo Video) error {
 		return fmt.Errorf("failed to marshal videos to JSON: %w", err)
 	}
 
-	if err := os.WriteFile(videosFile, data, 0644); err != nil {
+	videosPath, err := getVideosFilePath()
+	if err != nil {
+		return fmt.Errorf("failed to get videos file path: %w", err)
+	}
+
+	if err := os.WriteFile(videosPath, data, 0644); err != nil {
 		return fmt.Errorf("failed to write videos file: %w", err)
 	}
 
@@ -182,9 +195,60 @@ func deleteVideo(id string) error {
 		return fmt.Errorf("failed to marshal videos to JSON: %w", err)
 	}
 
-	if err := os.WriteFile(videosFile, data, 0644); err != nil {
+	videosPath, err := getVideosFilePath()
+	if err != nil {
+		return fmt.Errorf("failed to get videos file path: %w", err)
+	}
+
+	if err := os.WriteFile(videosPath, data, 0644); err != nil {
 		return fmt.Errorf("failed to write videos file: %w", err)
 	}
 
 	return nil
+}
+
+// ============================= settings =============================
+func loadSettings() AppSettings {
+	settingsPath, err := getSettingsFilePath()
+	if err != nil {
+		// error getting settings path, return defaults
+		return getDefaultSettings()
+	}
+
+	if _, err := os.Stat(settingsPath); os.IsNotExist(err) {
+		// file doesn't exist, create w/ default
+		defaults := getDefaultSettings()
+		saveSettings(defaults)
+		return defaults
+	}
+
+	data, err := os.ReadFile(settingsPath)
+	if err != nil {
+		return getDefaultSettings()
+	}
+
+	var settings AppSettings
+	if err := json.Unmarshal(data, &settings); err != nil {
+		return getDefaultSettings()
+	}
+
+	return settings
+}
+
+// save settings to file
+func saveSettings(settings AppSettings) error {
+	if err := ensureSettingsDir(); err != nil {
+		return err
+	}
+
+	settingsPath, err := getSettingsFilePath()
+	if err != nil {
+		return err
+	}
+	data, err := json.MarshalIndent(settings, "", "  ")
+	if err != nil {
+		return err
+	}
+
+	return os.WriteFile(settingsPath, data, 0644)
 }

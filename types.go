@@ -22,3 +22,8 @@ type Video struct {
 	Review      string    `json:"review"`
 	CreatedAt   time.Time `json:"created_at"`
 }
+
+type AppSettings struct {
+	VimMotions bool   `json:"vim_motions"`
+	Theme      string `json:"theme"`
+}

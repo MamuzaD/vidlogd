@@ -13,11 +13,10 @@ type MenuItem struct {
 	title string
 }
 
-func (i MenuItem) FilterValue() string { return i.title }
-
 // necessary for list
 type MenuItemDelegate struct{}
 
+func (i MenuItem) FilterValue() string                               { return i.title }
 func (d MenuItemDelegate) Height() int                               { return 1 }
 func (d MenuItemDelegate) Spacing() int                              { return 0 }
 func (d MenuItemDelegate) Update(msg tea.Msg, m *list.Model) tea.Cmd { return nil }
@@ -45,6 +44,7 @@ func NewMainMenuModel() MainMenuModel {
 	items := []list.Item{
 		MenuItem{title: "log video"},
 		MenuItem{title: "view logs"},
+		MenuItem{title: "settings"},
 		MenuItem{title: "exit"},
 	}
 
@@ -100,6 +100,10 @@ func (m MainMenuModel) handleSelection() (MainMenuModel, tea.Cmd) {
 	case "view logs":
 		return m, func() tea.Msg {
 			return NavigateMsg{View: LogListView}
+		}
+	case "settings":
+		return m, func() tea.Msg {
+			return NavigateMsg{View: SettingsView}
 		}
 	case "exit":
 		return m, tea.Quit

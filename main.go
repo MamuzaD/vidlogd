@@ -13,6 +13,7 @@ const (
 	LogVideoView
 	LogListView
 	LogDetailsView
+	SettingsView
 )
 
 type Model struct {
@@ -22,6 +23,7 @@ type Model struct {
 	logVideo   LogVideoModel
 	logList    LogListModel
 	logDetails LogDetailsModel
+	settings   SettingsModel
 
 	// Terminal dimensions for centering
 	width  int
@@ -75,6 +77,11 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.logDetails = NewLogDetailsModel(msg.VideoID)
 			return m, m.logDetails.Init()
 		}
+		if msg.View == SettingsView {
+			m.settings = NewSettingsModel()
+			return m, m.settings.Init()
+		}
+
 		return m, nil
 	}
 
@@ -87,6 +94,8 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.logList, cmd = m.logList.Update(msg)
 	case LogDetailsView:
 		m.logDetails, cmd = m.logDetails.Update(msg)
+	case SettingsView:
+		m.settings, cmd = m.settings.Update(msg)
 	}
 
 	return m, cmd
@@ -104,6 +113,8 @@ func (m Model) View() string {
 		content = m.logList.View()
 	case LogDetailsView:
 		content = m.logDetails.View()
+	case SettingsView:
+		content = m.settings.View()
 	}
 
 	title := centerHorizontally(titleStyle.Render("vidlogd"), lipgloss.Width(content))
@@ -118,13 +129,14 @@ func (m Model) View() string {
 }
 
 func main() {
-	// Initialize global keymap (vim mode = false for now)
-	InitKeyMap(true)
+	// load settings first
+	LoadAndApplySettings()
 
 	m := Model{
 		currentView: MainMenuView,
 		mainMenu:    NewMainMenuModel(),
 		logVideo:    NewLogVideoModel(""),
+		settings:    NewSettingsModel(),
 	}
 
 	p := tea.

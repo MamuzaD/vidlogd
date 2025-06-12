@@ -205,10 +205,10 @@ func (m LogListModel) handleSelection() (LogListModel, tea.Cmd) {
 func (m LogListModel) View() string {
 	var s strings.Builder
 
-	s.WriteString("video logs\n\n")
+	s.WriteString(headerStyle.Render("video logs\n\n"))
 
 	if len(m.videos) == 0 {
-		s.WriteString("no videos logged yet\n\n")
+		s.WriteString("\t\t\tno videos logged yet\n\n")
 		// Add help even when no videos
 		keymap := LogListKeyMap{}
 		s.WriteString(m.help.View(keymap))
