@@ -170,7 +170,7 @@ func NewForm(title string, fields []FormField, saveText string) FormModel {
 func NewVideoLogForm(editing bool, existingVideo *Video) FormModel {
 	fields := []FormField{
 		{Placeholder: "https://youtube.com/watch?v=...", Label: "YouTube URL:", Required: true, CharLimit: 200, Width: 60, Type: FormFieldURL},
-		{Placeholder: "video title", Label: "Title:", Required: true, CharLimit: 100, Width: 50, Type: FormFieldText},
+		{Placeholder: "video title", Label: "Title:", Required: true, CharLimit: 100, Width: 60, Type: FormFieldText},
 		{Placeholder: "channel name", Label: "Channel:", Required: true, CharLimit: 50, Width: 50, Type: FormFieldText},
 		{Placeholder: "YYYY-MM-DD", Label: "Video Release Date:", Required: true, CharLimit: 16, Width: 18, Type: FormFieldDate},
 		{Placeholder: "YYYY-MM-DD HH:MM AM/PM", Label: "Log Date:", Required: true, CharLimit: 19, Width: 21, Type: FormFieldDateHour},

@@ -6,7 +6,9 @@ import (
 	"github.com/charmbracelet/bubbles/help"
 	"github.com/charmbracelet/bubbles/key"
 	"github.com/charmbracelet/bubbles/table"
+	"github.com/charmbracelet/bubbles/textinput"
 	tea "github.com/charmbracelet/bubbletea"
+	"github.com/sahilm/fuzzy"
 )
 
 type LogListKeyMap struct{}
@@ -19,6 +21,7 @@ func (k LogListKeyMap) ShortHelp() []key.Binding {
 		GlobalKeyMap.Edit,
 		GlobalKeyMap.Delete,
 		GlobalKeyMap.Back,
+		GlobalKeyMap.Search,
 		GlobalKeyMap.Help,
 	}
 }
@@ -37,15 +40,20 @@ func (k LogListKeyMap) FullHelp() [][]key.Binding {
 		},
 		{
 			GlobalKeyMap.Exit,
+			GlobalKeyMap.Search,
 			GlobalKeyMap.Help,
 		},
 	}
 }
 
 type LogListModel struct {
-	table  table.Model
-	videos []Video
-	help   help.Model
+	table      table.Model
+	videos     []Video
+	help       help.Model
+	search     textinput.Model
+	filtered   []Video
+	isFiltered bool
+	focused    bool
 }
 
 func NewLogListModel() LogListModel {
@@ -71,9 +79,19 @@ func NewLogListModel() LogListModel {
 	h := help.New()
 	h.ShowAll = false // start with compact help
 
+	search := textinput.New()
+	search.Placeholder = "search videos..."
+	search.Prompt = "  "
+	search.CharLimit = 50
+	search.Width = 50
+
 	return LogListModel{
-		table: t,
-		help:  h,
+		table:      t,
+		help:       h,
+		search:     search,
+		filtered:   []Video{},
+		isFiltered: false,
+		focused:    false,
 	}
 }
 
@@ -91,12 +109,34 @@ type LoadVideosMsg struct {
 	videos []Video
 }
 
+func (m *LogListModel) filterVideos() {
+	if m.search.Value() == "" {
+		m.isFiltered = false
+		m.filtered = m.videos
+		return
+	}
+
+	m.isFiltered = true
+	searchable := make([]string, len(m.videos))
+	for i, v := range m.videos {
+		searchable[i] = strings.ToLower(v.Title + " " + v.Channel)
+	}
+
+	matches := fuzzy.Find(m.search.Value(), searchable)
+	m.filtered = make([]Video, len(matches))
+	for i, match := range matches {
+		m.filtered[i] = m.videos[match.Index]
+	}
+}
+
 func (m LogListModel) Update(msg tea.Msg) (LogListModel, tea.Cmd) {
 	var cmd tea.Cmd
+	var searchCmd tea.Cmd
 
 	switch msg := msg.(type) {
 	case LoadVideosMsg:
 		m.videos = msg.videos
+		m.filtered = msg.videos
 		m.updateTableRows()
 		return m, nil
 	case tea.KeyMsg:
@@ -104,6 +144,24 @@ func (m LogListModel) Update(msg tea.Msg) (LogListModel, tea.Cmd) {
 		case key.Matches(msg, GlobalKeyMap.Help):
 			m.help.ShowAll = !m.help.ShowAll
 			return m, nil
+		case key.Matches(msg, GlobalKeyMap.Search), (m.focused && key.Matches(msg, GlobalKeyMap.SearchBack)):
+			if m.focused {
+				m.focused = false
+				m.search.Blur()
+				m.table.Focus()
+				m.filterVideos()
+			} else {
+				m.focused = true
+				m.search.Focus()
+				m.table.Blur()
+			}
+			return m, nil
+		case m.focused:
+			// when search is focused, only handle search input
+			m.search, searchCmd = m.search.Update(msg)
+			m.filterVideos()
+			m.updateTableRows()
+			return m, searchCmd
 		case key.Matches(msg, GlobalKeyMap.Edit): // quick edit shortcut
 			if len(m.videos) > 0 {
 				selectedRow := m.table.Cursor()
@@ -148,8 +206,13 @@ func (m LogListModel) Update(msg tea.Msg) (LogListModel, tea.Cmd) {
 }
 
 func (m *LogListModel) updateTableRows() {
-	rows := make([]table.Row, len(m.videos))
-	for i, video := range m.videos {
+	videosToUse := m.videos
+	if m.isFiltered {
+		videosToUse = m.filtered
+	}
+
+	rows := make([]table.Row, len(videosToUse))
+	for i, video := range videosToUse {
 		title := video.Title
 		if title == "" {
 			title = "Untitled"
@@ -205,7 +268,7 @@ func (m LogListModel) handleSelection() (LogListModel, tea.Cmd) {
 func (m LogListModel) View() string {
 	var s strings.Builder
 
-	s.WriteString(headerStyle.Render("video logs\n\n"))
+	s.WriteString(headerStyle.Render("video logs"))
 
 	if len(m.videos) == 0 {
 		s.WriteString("\t\t\tno videos logged yet\n\n")
@@ -215,9 +278,12 @@ func (m LogListModel) View() string {
 		return s.String()
 	}
 
+	// add search input
+	s.WriteString("\n\n" + m.search.View() + "\n")
+
 	tableContent := m.table.View()
 	styledTable := tableStyle.Render(tableContent)
-	s.WriteString(styledTable)
+	s.WriteString("\n" + styledTable)
 
 	// Add help at the bottom
 	keymap := LogListKeyMap{}

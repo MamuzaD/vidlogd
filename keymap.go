@@ -30,10 +30,12 @@ type KeyMap struct {
 	Select key.Binding
 
 	// specific actions
-	Edit   key.Binding
-	Delete key.Binding
-	Save   key.Binding
-	Cancel key.Binding
+	Edit       key.Binding
+	Delete     key.Binding
+	Save       key.Binding
+	Cancel     key.Binding
+	Search     key.Binding
+	SearchBack key.Binding
 
 	// form navigation
 	NextField key.Binding
@@ -69,11 +71,13 @@ func NewKeyMap(useVim bool) KeyMap {
 		Right: key.NewBinding(key.WithKeys("right", "l"), key.WithHelp("→/l", "right")),
 
 		// common actions (include space for select)
-		Select: key.NewBinding(key.WithKeys("enter"), key.WithHelp("enter", "select")),
-		Edit:   key.NewBinding(key.WithKeys("e"), key.WithHelp("e", "edit")),
-		Delete: key.NewBinding(key.WithKeys("x", "d"), key.WithHelp("x/d", "delete")),
-		Save:   key.NewBinding(key.WithKeys("ctrl+s"), key.WithHelp("ctrl+s", "save")),
-		Cancel: key.NewBinding(key.WithKeys("q"), key.WithHelp("q", "cancel")),
+		Select:     key.NewBinding(key.WithKeys("enter"), key.WithHelp("enter", "select")),
+		Edit:       key.NewBinding(key.WithKeys("e"), key.WithHelp("e", "edit")),
+		Delete:     key.NewBinding(key.WithKeys("x", "d"), key.WithHelp("x/d", "delete")),
+		Save:       key.NewBinding(key.WithKeys("ctrl+s"), key.WithHelp("ctrl+s", "save")),
+		Cancel:     key.NewBinding(key.WithKeys("q"), key.WithHelp("q", "cancel")),
+		Search:     key.NewBinding(key.WithKeys("/"), key.WithHelp("/", "search")),
+		SearchBack: key.NewBinding(key.WithKeys("esc")),
 
 		// rating number inputs
 		Rating: key.NewBinding(
