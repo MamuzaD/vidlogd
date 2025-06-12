@@ -60,8 +60,8 @@ func NewLogListModel() LogListModel {
 	columns := []table.Column{
 		{Title: "Title", Width: 30},
 		{Title: "Channel", Width: 20},
-		{Title: "Rating", Width: 15},
-		{Title: "Date Logged", Width: 12},
+		{Title: "Rating", Width: 8},
+		{Title: "Date Logged", Width: 20},
 	}
 
 	t := table.New(
