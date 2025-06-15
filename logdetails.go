@@ -209,7 +209,19 @@ func (m LogDetailsModel) View() string {
 	s.WriteString("Release Date: " + m.video.ReleaseDate + "\n\n")
 
 	s.WriteString("Date Logged: " + m.video.LogDate + "\n\n")
-	s.WriteString("Rating: " + fmt.Sprintf("%s (%.1f/5)", renderStars(m.video.Rating), m.video.Rating) + "\n\n")
+	var rewatched string
+	if m.video.Rewatched {
+		rewatched = "  rewatched"
+	} else {
+		rewatched = "  first watch"
+	}
+	s.WriteString(fmt.Sprintf(
+		"rating: %s (%.1f/5)  %s\n\n",
+		renderStars(m.video.Rating),
+		m.video.Rating,
+		rewatched,
+	))
+
 	if m.video.Review != "" {
 		s.WriteString("Review:" + "\n")
 		s.WriteString(reviewStyle.Render(m.video.Review) + "\n\n")

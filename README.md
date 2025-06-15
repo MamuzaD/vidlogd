@@ -37,10 +37,7 @@ https://github.com/user-attachments/assets/caaa27a4-07c2-4fc4-bc71-9f4496edd108
 - [x] Settings view
 - [ ] Build/config
   - [ ] Package/CLI
-- [ ] Search and filter videos
+- [x] Search and filter videos
 - [ ] Video thumbnails
   - [ ] Display image with protocols for kitty, wezterm, ghostty
-- [ ] Export data (CSV/JSON)
-- [ ] Tags/categories
-- [ ] Import existing data
 - [ ] Statistics view
