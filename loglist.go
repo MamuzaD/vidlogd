@@ -58,8 +58,8 @@ type LogListModel struct {
 
 func NewLogListModel() LogListModel {
 	columns := []table.Column{
-		{Title: "Title", Width: 30},
-		{Title: "Channel", Width: 20},
+		{Title: "Title", Width: 35},
+		{Title: "Channel", Width: 15},
 		{Title: "Rating", Width: 8},
 		{Title: "Date Logged", Width: 20},
 	}
@@ -241,8 +241,13 @@ func (m *LogListModel) updateTableRows() {
 		}
 
 		logDate := video.LogDate
+		// add a leading space if the hour is a single digit.
+		colon := 12
+		hour := 10
 		if logDate == "" {
 			logDate = "No date"
+		} else if len(logDate) > 1 && logDate[colon] == ':' {
+			logDate = logDate[0:hour] + " " + logDate[hour:]
 		}
 
 		rows[i] = table.Row{title, channel, ratingStr, logDate}

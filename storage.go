@@ -14,8 +14,8 @@ import (
 func sortVideosByLogDate(videos []Video) {
 	sort.Slice(videos, func(i, j int) bool {
 		// parse log dates for comparison
-		dateI, errI := time.Parse("2006-01-02 3:04 PM", videos[i].LogDate)
-		dateJ, errJ := time.Parse("2006-01-02 3:04 PM", videos[j].LogDate)
+		dateI, errI := time.Parse(DateTimeFormat, videos[i].LogDate)
+		dateJ, errJ := time.Parse(DateTimeFormat, videos[j].LogDate)
 
 		// if either date fails to parse, fall back to creation time
 		if errI != nil || errJ != nil {
@@ -149,6 +149,7 @@ func createVideoFromForm(form FormModel) Video {
 		ReleaseDate: form.GetValue(release),
 		LogDate:     form.GetValue(logDate),
 		Review:      form.GetValue(review),
+		Rewatched:   form.GetValue(rewatch) == "true",
 		Rating:      form.GetRating(),
 	}
 }

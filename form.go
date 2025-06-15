@@ -13,6 +13,7 @@ import (
 	"github.com/charmbracelet/bubbles/key"
 	"github.com/charmbracelet/bubbles/textinput"
 	tea "github.com/charmbracelet/bubbletea"
+	"github.com/charmbracelet/lipgloss"
 )
 
 const (
@@ -22,6 +23,7 @@ const (
 	release
 	logDate
 	rating
+	rewatch
 	review
 	button
 )
@@ -34,6 +36,7 @@ const (
 	FormFieldURL
 	FormFieldText
 	FormFieldRating
+	FormFieldCheckbox
 )
 
 type FormField struct {
@@ -44,21 +47,23 @@ type FormField struct {
 	CharLimit   int
 	Width       int
 	Type        FieldType
+	SideBySide  bool
 }
 
 type FormModel struct {
-	title       string
-	inputs      []textinput.Model
-	fields      []FormField
-	focused     int
-	fieldErrors []string
-	touched     []bool
-	buttonText  string
-	onSave      func(FormModel) tea.Cmd
-	onCancel    func() tea.Cmd
-	lastURL     string
-	ratingValue float64 // current rating value for the rating field
-	help        help.Model
+	title          string
+	inputs         []textinput.Model
+	fields         []FormField
+	focused        int
+	fieldErrors    []string
+	touched        []bool
+	buttonText     string
+	onSave         func(FormModel) tea.Cmd
+	onCancel       func() tea.Cmd
+	lastURL        string
+	ratingValue    float64 // current rating value for the rating field
+	help           help.Model
+	renderedFields map[int]bool // track which fields have been rendered (for side by side)
 	// vim mode support
 	vimMode string
 }
@@ -172,9 +177,10 @@ func NewVideoLogForm(editing bool, existingVideo *Video) FormModel {
 		{Placeholder: "https://youtube.com/watch?v=...", Label: "YouTube URL:", Required: true, CharLimit: 200, Width: 60, Type: FormFieldURL},
 		{Placeholder: "video title", Label: "Title:", Required: true, CharLimit: 100, Width: 60, Type: FormFieldText},
 		{Placeholder: "channel name", Label: "Channel:", Required: true, CharLimit: 50, Width: 50, Type: FormFieldText},
-		{Placeholder: "YYYY-MM-DD", Label: "Video Release Date:", Required: true, CharLimit: 16, Width: 18, Type: FormFieldDate},
-		{Placeholder: "YYYY-MM-DD HH:MM AM/PM", Label: "Log Date:", Required: true, CharLimit: 19, Width: 21, Type: FormFieldDateHour},
-		{Placeholder: "", Label: "Rating:", Required: false, CharLimit: 1, Width: 20, Type: FormFieldRating},
+		{Placeholder: "YYYY-MM-DD", Label: "Video Release Date:", Required: true, CharLimit: 16, Width: 18, Type: FormFieldDate, SideBySide: true},
+		{Placeholder: "YYYY-MM-DD HH:MM AM/PM", Label: "Log Date:", Required: true, CharLimit: 19, Width: 21, Type: FormFieldDateHour, SideBySide: true},
+		{Placeholder: "", Label: "Rating:", Required: false, CharLimit: 1, Width: 20, Type: FormFieldRating, SideBySide: true},
+		{Placeholder: "", Label: "Rewatched:", Required: false, Width: 10, Type: FormFieldCheckbox, SideBySide: true},
 		{Placeholder: "write your review...", Label: "Review:", Required: false, CharLimit: 500, Width: 60, Type: FormFieldText},
 	}
 
@@ -187,6 +193,11 @@ func NewVideoLogForm(editing bool, existingVideo *Video) FormModel {
 		fields[release].Value = existingVideo.ReleaseDate
 		fields[logDate].Value = existingVideo.LogDate
 		ratingValue = existingVideo.Rating
+		if existingVideo.Rewatched {
+			fields[rewatch].Value = "true"
+		} else {
+			fields[rewatch].Value = "false"
+		}
 		fields[review].Value = existingVideo.Review
 	}
 
@@ -300,7 +311,7 @@ func (m FormModel) Update(msg tea.Msg) (FormModel, tea.Cmd) {
 				m.fieldErrors[release] = ""
 			}
 			if len(m.inputs) > logDate {
-				currentDate := time.Now().Format("2006-01-02 3:04 PM")
+				currentDate := time.Now().Format(DateTimeFormat)
 				m.inputs[logDate].SetValue(currentDate)
 				m.fieldErrors[logDate] = ""
 			}
@@ -365,6 +376,16 @@ func (m FormModel) Update(msg tea.Msg) (FormModel, tea.Cmd) {
 			if m.focused == len(m.inputs) {
 				return m.handleSave()
 			} else {
+				// toggle checkbox
+				if m.focused < len(m.fields) && m.fields[m.focused].Type == FormFieldCheckbox {
+					currentValue := m.inputs[m.focused].Value()
+					if currentValue == "true" {
+						m.inputs[m.focused].SetValue("false")
+					} else {
+						m.inputs[m.focused].SetValue("true")
+					}
+					return m, nil
+				}
 				m.validateCurrentField()
 				m.nextInput()
 			}
@@ -426,6 +447,9 @@ func (m FormModel) Update(msg tea.Msg) (FormModel, tea.Cmd) {
 func (m FormModel) View() string {
 	var s strings.Builder
 
+	// clear rendered fields tracking for this render
+	m.renderedFields = make(map[int]bool)
+
 	s.WriteString(headerStyle.Render(m.title))
 
 	// show vim mode status if vim is enabled
@@ -438,26 +462,44 @@ func (m FormModel) View() string {
 
 	// render all input fields
 	for i, field := range m.fields {
-		s.WriteString(field.Label + "\n")
-
-		if field.Type == FormFieldRating {
-			// render rating stars
-			stars := m.renderRatingStars(i == m.focused)
-			s.WriteString(stars)
-		} else {
-			var styledInput string
-			if m.focused == i {
-				styledInput = formFieldFocusedStyle.Render(m.inputs[i].View())
-			} else {
-				styledInput = formFieldStyle.Render(m.inputs[i].View())
+		// handle side by side rendering
+		if field.SideBySide && !m.isFieldAlreadyRendered(i) {
+			// find the next field to pair with
+			pairedIndex := -1
+			for j := i + 1; j < len(m.fields); j++ {
+				if m.fields[j].SideBySide {
+					pairedIndex = j
+					break
+				}
 			}
-			s.WriteString(styledInput)
+
+			if pairedIndex != -1 {
+				// render both fields side by side
+				leftSection := m.renderField(i)
+				rightSection := m.renderField(pairedIndex)
+
+				sideBySide := lipgloss.JoinHorizontal(
+					lipgloss.Top,
+					leftSection,
+					strings.Repeat(" ", 8), // spacing
+					rightSection,
+				)
+				s.WriteString(sideBySide)
+				s.WriteString("\n\n")
+
+				// mark both fields as rendered
+				m.markFieldAsRendered(i)
+				m.markFieldAsRendered(pairedIndex)
+				continue
+			}
 		}
 
-		// show field-specific error if field has been touched and has an error
-		if m.touched[i] && m.fieldErrors[i] != "" {
-			s.WriteString("\n  ⚠ " + m.fieldErrors[i])
+		// skip if already rendered as part of side by side
+		if m.isFieldAlreadyRendered(i) {
+			continue
 		}
+
+		s.WriteString(m.renderField(i))
 		s.WriteString("\n\n")
 	}
 
@@ -469,7 +511,7 @@ func (m FormModel) View() string {
 	}
 
 	if m.fieldErrors[button] != "" {
-		s.WriteString(" ⚠ " + m.fieldErrors[button])
+		s.WriteString("\n ⚠ " + m.fieldErrors[button])
 	}
 
 	keymap := FormKeyMap{onRating: m.focused == rating, vimMode: m.vimMode}
@@ -505,7 +547,7 @@ func (m FormModel) renderRatingStars(focused bool) string {
 	} else {
 		// only show decimal if not a whole number
 		if m.ratingValue == float64(int(m.ratingValue)) {
-			s.WriteString(fmt.Sprintf("  (%d/5) ", int(m.ratingValue)))
+			s.WriteString(fmt.Sprintf("  (%d/5)   ", int(m.ratingValue)))
 		} else {
 			s.WriteString(fmt.Sprintf("  (%.1f/5) ", m.ratingValue))
 		}
@@ -592,11 +634,11 @@ func (m *FormModel) validateFieldByIndex(index int) string {
 	switch field.Type {
 	case FormFieldDate:
 		if !isValidDate(value) {
-			errorMsg = "invalid date (YYYY-MM-DD)"
+			errorMsg = "invalid date"
 		}
 	case FormFieldDateHour:
 		if !isValidDateHour(value) {
-			errorMsg = "invalid date (YYYY-MM-DD HH:MM AM/PM)"
+			errorMsg = "invalid datetime"
 		}
 	case FormFieldURL:
 		if !isValidYouTubeURL(value) {
@@ -623,7 +665,7 @@ func isValidDateHour(dateStr string) bool {
 	}
 
 	// try to parse the date to ensure it's actually valid
-	_, err := time.Parse("2006-01-02 3:04 PM", dateStr)
+	_, err := time.Parse(DateTimeFormat, dateStr)
 	return err == nil
 }
 
@@ -640,7 +682,7 @@ func isValidDate(dateStr string) bool {
 	}
 
 	// try to parse the date to ensure it's actually valid
-	_, err := time.Parse("2006-01-02", dateStr)
+	_, err := time.Parse(ISODateFormat, dateStr)
 	return err == nil
 }
 
@@ -669,4 +711,68 @@ func (m FormModel) handleSave() (FormModel, tea.Cmd) {
 	}
 
 	return m, nil
+}
+
+func (m FormModel) isFieldAlreadyRendered(index int) bool {
+	if m.renderedFields == nil {
+		return false
+	}
+	return m.renderedFields[index]
+}
+
+func (m *FormModel) markFieldAsRendered(index int) {
+	if m.renderedFields == nil {
+		m.renderedFields = make(map[int]bool)
+	}
+	m.renderedFields[index] = true
+}
+
+func (m FormModel) renderField(i int) string {
+	if i >= len(m.fields) {
+		return ""
+	}
+
+	var s strings.Builder
+	field := m.fields[i]
+
+	// render label
+	s.WriteString(field.Label + "\n")
+
+	// render field content based on type
+	switch field.Type {
+	case FormFieldRating:
+		// render rating stars
+		stars := m.renderRatingStars(i == m.focused)
+		s.WriteString(stars)
+	case FormFieldCheckbox:
+		// render checkbox
+		checked := m.inputs[i].Value() == "true"
+		var checkbox string
+		if checked {
+			checkbox = " ✓ "
+		} else {
+			checkbox = "   "
+		}
+		if m.focused == i {
+			checkbox = formFieldFocusedStyle.Render(checkbox)
+		} else {
+			checkbox = formFieldStyle.Render(checkbox)
+		}
+		s.WriteString(checkbox)
+	default:
+		var styledInput string
+		if m.focused == i {
+			styledInput = formFieldFocusedStyle.Render(m.inputs[i].View())
+		} else {
+			styledInput = formFieldStyle.Render(m.inputs[i].View())
+		}
+		s.WriteString(styledInput)
+	}
+
+	// show field-specific error if field has been touched and has an error
+	if m.touched[i] && m.fieldErrors[i] != "" {
+		s.WriteString("\n  ⚠ " + m.fieldErrors[i])
+	}
+
+	return s.String()
 }

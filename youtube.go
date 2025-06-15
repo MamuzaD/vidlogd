@@ -157,7 +157,7 @@ func fetchYouTubeMetadata(urlStr string) tea.Cmd {
 		publishedDate := ""
 		if snippet.PublishedAt != "" {
 			if t, err := time.Parse(time.RFC3339, snippet.PublishedAt); err == nil {
-				publishedDate = t.Format("2006-01-02")
+				publishedDate = t.Format(ISODateFormat)
 			}
 		}
 

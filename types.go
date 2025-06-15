@@ -19,6 +19,7 @@ type Video struct {
 	ReleaseDate string    `json:"release_date"`
 	LogDate     string    `json:"log_date"`
 	Rating      float64   `json:"rating"`
+	Rewatched   bool      `json:"rewatched"`
 	Review      string    `json:"review"`
 	CreatedAt   time.Time `json:"created_at"`
 }
@@ -27,3 +28,8 @@ type AppSettings struct {
 	VimMotions bool   `json:"vim_motions"`
 	Theme      string `json:"theme"`
 }
+
+var (
+	ISODateFormat  string = "2006-01-02"
+	DateTimeFormat string = "2006-01-02 3:04 PM"
+)
