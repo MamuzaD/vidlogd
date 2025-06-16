@@ -229,15 +229,13 @@ func (m *LogListModel) updateTableRows() {
 			for j := 1; j <= 5; j++ {
 				starValue := float64(j)
 				if video.Rating >= starValue {
-					ratingStr += "★"
+					ratingStr += "★" // filled star
 				} else if video.Rating >= starValue-0.5 {
 					ratingStr += "⯨" // half star
 				} else {
 					ratingStr += "☆"
 				}
 			}
-		} else {
-			ratingStr = "Not rated"
 		}
 
 		logDate := video.LogDate
@@ -273,7 +271,7 @@ func (m LogListModel) handleSelection() (LogListModel, tea.Cmd) {
 func (m LogListModel) View() string {
 	var s strings.Builder
 
-	s.WriteString(headerStyle.Render("video logs"))
+	s.WriteString(headerStyle.Render("video logs") + "\n")
 
 	if len(m.videos) == 0 {
 		s.WriteString("\t\t\tno videos logged yet\n\n")
@@ -283,8 +281,13 @@ func (m LogListModel) View() string {
 		return s.String()
 	}
 
-	// add search input
-	s.WriteString("\n\n" + m.search.View() + "\n")
+	// add red border when focused
+	currentSearchStyle := searchStyle
+	if m.focused {
+		currentSearchStyle = searchStyle.BorderForeground(primaryColor)
+	}
+
+	s.WriteString("\n" + currentSearchStyle.Render(m.search.View()) + "\n")
 
 	tableContent := m.table.View()
 	styledTable := tableStyle.Render(tableContent)

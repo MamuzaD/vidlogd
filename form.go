@@ -176,9 +176,9 @@ func NewVideoLogForm(editing bool, existingVideo *Video) FormModel {
 	fields := []FormField{
 		{Placeholder: "https://youtube.com/watch?v=...", Label: "YouTube URL:", Required: true, CharLimit: 200, Width: 60, Type: FormFieldURL},
 		{Placeholder: "video title", Label: "Title:", Required: true, CharLimit: 100, Width: 60, Type: FormFieldText},
-		{Placeholder: "channel name", Label: "Channel:", Required: true, CharLimit: 50, Width: 50, Type: FormFieldText},
-		{Placeholder: "YYYY-MM-DD", Label: "Video Release Date:", Required: true, CharLimit: 16, Width: 18, Type: FormFieldDate, SideBySide: true},
-		{Placeholder: "YYYY-MM-DD HH:MM AM/PM", Label: "Log Date:", Required: true, CharLimit: 19, Width: 21, Type: FormFieldDateHour, SideBySide: true},
+		{Placeholder: "channel name", Label: "Channel:", Required: true, CharLimit: 50, Width: 52, Type: FormFieldText},
+		{Placeholder: "YYYY-MM-DD", Label: "Video Release Date:", Required: true, CharLimit: 16, Width: 17, Type: FormFieldDate, SideBySide: true},
+		{Placeholder: "YYYY-MM-DD HH:MM AM/PM", Label: "Log Date:", Required: true, CharLimit: 19, Width: 22, Type: FormFieldDateHour, SideBySide: true},
 		{Placeholder: "", Label: "Rating:", Required: false, CharLimit: 1, Width: 20, Type: FormFieldRating, SideBySide: true},
 		{Placeholder: "", Label: "Rewatched:", Required: false, Width: 10, Type: FormFieldCheckbox, SideBySide: true},
 		{Placeholder: "write your review...", Label: "Review:", Required: false, CharLimit: 500, Width: 60, Type: FormFieldText},
@@ -485,7 +485,7 @@ func (m FormModel) View() string {
 					rightSection,
 				)
 				s.WriteString(sideBySide)
-				s.WriteString("\n\n")
+				s.WriteString("\n")
 
 				// mark both fields as rendered
 				m.markFieldAsRendered(i)
@@ -500,7 +500,7 @@ func (m FormModel) View() string {
 		}
 
 		s.WriteString(m.renderField(i))
-		s.WriteString("\n\n")
+		s.WriteString("\n")
 	}
 
 	// save button
@@ -511,7 +511,7 @@ func (m FormModel) View() string {
 	}
 
 	if m.fieldErrors[button] != "" {
-		s.WriteString("\n ⚠ " + m.fieldErrors[button])
+		s.WriteString("\n   " + m.fieldErrors[button])
 	}
 
 	keymap := FormKeyMap{onRating: m.focused == rating, vimMode: m.vimMode}
@@ -543,7 +543,7 @@ func (m FormModel) renderRatingStars(focused bool) string {
 
 	// show current rating text
 	if m.ratingValue == 0 {
-		s.WriteString("  (no rating) ")
+		s.WriteString("          ")
 	} else {
 		// only show decimal if not a whole number
 		if m.ratingValue == float64(int(m.ratingValue)) {
@@ -771,7 +771,7 @@ func (m FormModel) renderField(i int) string {
 
 	// show field-specific error if field has been touched and has an error
 	if m.touched[i] && m.fieldErrors[i] != "" {
-		s.WriteString("\n  ⚠ " + m.fieldErrors[i])
+		s.WriteString("\n   " + m.fieldErrors[i])
 	}
 
 	return s.String()

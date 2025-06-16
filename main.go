@@ -14,6 +14,7 @@ const (
 	LogListView
 	LogDetailsView
 	SettingsView
+	StatsView
 )
 
 type Model struct {
@@ -24,6 +25,7 @@ type Model struct {
 	logList    LogListModel
 	logDetails LogDetailsModel
 	settings   SettingsModel
+	stats      StatsModel
 
 	// Terminal dimensions for centering
 	width  int
@@ -81,6 +83,10 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.settings = NewSettingsModel()
 			return m, m.settings.Init()
 		}
+		if msg.View == StatsView {
+			m.stats = NewStatsModel()
+			return m, m.stats.Init()
+		}
 
 		return m, nil
 	}
@@ -96,6 +102,8 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.logDetails, cmd = m.logDetails.Update(msg)
 	case SettingsView:
 		m.settings, cmd = m.settings.Update(msg)
+	case StatsView:
+		m.stats, cmd = m.stats.Update(msg)
 	}
 
 	return m, cmd
@@ -115,6 +123,8 @@ func (m Model) View() string {
 		content = m.logDetails.View()
 	case SettingsView:
 		content = m.settings.View()
+	case StatsView:
+		content = m.stats.View()
 	}
 
 	title := centerHorizontally(titleStyle.Render("vidlogd"), lipgloss.Width(content))
@@ -137,6 +147,7 @@ func main() {
 		mainMenu:    NewMainMenuModel(),
 		logVideo:    NewLogVideoModel(""),
 		settings:    NewSettingsModel(),
+		stats:       NewStatsModel(),
 	}
 
 	p := tea.

@@ -31,5 +31,6 @@ type AppSettings struct {
 
 var (
 	ISODateFormat  string = "2006-01-02"
+	MonthFormat    string = "01/06"
 	DateTimeFormat string = "2006-01-02 3:04 PM"
 )

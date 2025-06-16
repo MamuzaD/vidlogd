@@ -41,6 +41,10 @@ type KeyMap struct {
 	NextField key.Binding
 	PrevField key.Binding
 
+	// stat navigation
+	Cycle     key.Binding
+	CycleBack key.Binding
+
 	// vim-specific
 	InsertMode key.Binding
 	NormalMode key.Binding
@@ -69,6 +73,10 @@ func NewKeyMap(useVim bool) KeyMap {
 		Down:  key.NewBinding(key.WithKeys("down", "j"), key.WithHelp("↓/j", "down")),
 		Left:  key.NewBinding(key.WithKeys("left", "h"), key.WithHelp("←/h", "left")),
 		Right: key.NewBinding(key.WithKeys("right", "l"), key.WithHelp("→/l", "right")),
+
+		// stat navigation
+		Cycle:     key.NewBinding(key.WithKeys("tab"), key.WithHelp("tab", "cycle")),
+		CycleBack: key.NewBinding(key.WithKeys("shift+tab"), key.WithHelp("shift+tab", "cycle back")),
 
 		// common actions (include space for select)
 		Select:     key.NewBinding(key.WithKeys("enter"), key.WithHelp("enter", "select")),

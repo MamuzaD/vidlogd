@@ -183,7 +183,7 @@ func renderStars(rating float64) string {
 	for i := 1; i <= 5; i++ {
 		starValue := float64(i)
 		if rating >= starValue {
-			stars.WriteString("★")
+			stars.WriteString("★") // filled star
 		} else if rating >= starValue-0.5 {
 			stars.WriteString("⯨") // half star
 		} else {
@@ -200,7 +200,7 @@ func (m LogDetailsModel) View() string {
 
 	var s strings.Builder
 
-	s.WriteString("log details" + "\n\n")
+	s.WriteString(headerStyle.Render("log details"))
 
 	// video info
 	s.WriteString("Title: " + m.video.Title + "\n\n")
@@ -234,7 +234,7 @@ func (m LogDetailsModel) View() string {
 	s.WriteString(m.actionsList.View() + "\n")
 
 	keymap := LogDetailsKeyMap{}
-	s.WriteString("\n" + m.help.View(keymap))
+	s.WriteString(m.help.View(keymap))
 
 	return s.String()
 }

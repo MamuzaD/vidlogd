@@ -120,6 +120,14 @@ func initStyles() {
 	descriptionStyle = lipgloss.NewStyle().
 		Padding(0, 2).
 		Faint(true)
+
+	// search box style
+	searchStyle = lipgloss.NewStyle().
+		BorderStyle(lipgloss.NormalBorder()).
+		BorderBottom(true).
+		Padding(0, 1).
+		Margin(0, 1).
+		Height(1)
 }
 
 var (
@@ -153,6 +161,9 @@ var (
 
 	// description style
 	descriptionStyle lipgloss.Style
+
+	// search box style
+	searchStyle lipgloss.Style
 )
 
 // centerHorizontally centers content horizontally in the terminal

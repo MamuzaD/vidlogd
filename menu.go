@@ -44,6 +44,7 @@ func NewMainMenuModel() MainMenuModel {
 	items := []list.Item{
 		MenuItem{title: "log video"},
 		MenuItem{title: "view logs"},
+		MenuItem{title: "stats"},
 		MenuItem{title: "settings"},
 		MenuItem{title: "exit"},
 	}
@@ -100,6 +101,10 @@ func (m MainMenuModel) handleSelection() (MainMenuModel, tea.Cmd) {
 	case "view logs":
 		return m, func() tea.Msg {
 			return NavigateMsg{View: LogListView}
+		}
+	case "stats":
+		return m, func() tea.Msg {
+			return NavigateMsg{View: StatsView}
 		}
 	case "settings":
 		return m, func() tea.Msg {
