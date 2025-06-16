@@ -98,10 +98,7 @@ func (m *StatsModel) updateChannelList() {
 	// get unique channels with their counts
 	channelMap := make(map[string]int)
 	for _, video := range m.videos {
-		channel := video.Channel
-		if channel == "" {
-			channel = "Unknown Channel"
-		}
+		channel := getVideoChannel(video)
 		channelMap[channel]++
 	}
 
@@ -174,10 +171,7 @@ func (m *StatsModel) filterStats() {
 
 		// make sure log is from selected channel
 		if selectedChannel != "" {
-			videoChannel := video.Channel
-			if videoChannel == "" {
-				videoChannel = "Unknown Channel"
-			}
+			videoChannel := getVideoChannel(video)
 			matchesChannel = videoChannel == selectedChannel
 		}
 
@@ -224,14 +218,9 @@ func (m *StatsModel) calculateStats() (
 		}
 
 		// channel stats
-		channel := video.Channel
-		if channel == "" {
-			channel = "Unknown Channel"
-		}
+		channel := getVideoChannel(video)
 		if _, exists := channelMap[channel]; !exists {
-			channelMap[channel] = &ChannelStats{
-				Channel: channel,
-			}
+			channelMap[channel] = &ChannelStats{Channel: channel}
 		}
 		stats := channelMap[channel]
 		stats.Count++
@@ -254,14 +243,16 @@ func (m *StatsModel) calculateStats() (
 		avgRating = totalRatingSum / float64(totalRated)
 	}
 
-	// convert maps to slices and sort
+	// convert and sort channel stats
 	for _, stats := range channelMap {
 		channelStats = append(channelStats, *stats)
 	}
+	// most logged first
 	sort.Slice(channelStats, func(i, j int) bool {
 		return channelStats[i].Count > channelStats[j].Count
 	})
 
+	// convert and sort month stats
 	for month, count := range monthMap {
 		monthStats = append(monthStats, MonthStats{Month: month, Count: count})
 	}
@@ -287,6 +278,42 @@ func (m *StatsModel) renderStars(rating float64) string {
 	}
 
 	return ratingStr
+}
+
+func (m *StatsModel) renderDashboardCards(totalVideos int, avgRating float64, totalRated int, rewatchCount int, channelStats []ChannelStats) string {
+	cardStyle := lipgloss.NewStyle().
+		Border(lipgloss.RoundedBorder()).
+		Padding(0, 1).
+		Height(2)
+	totalCard := cardStyle.Width(12).Render(fmt.Sprintf(" Videos\n%d total", totalVideos))
+	avgCard := ""
+	if totalRated > 0 {
+		avgCard = cardStyle.Width(12).Render(fmt.Sprintf(" Rating\n%.1f/5", avgRating))
+	} else {
+		avgCard = cardStyle.Width(12).Render(" Rating\n")
+	}
+	rewatchCard := cardStyle.Width(12).Render(fmt.Sprintf(" Rewatch\n%.0f%%", float64(rewatchCount)/float64(totalVideos)*100))
+	channelCountCard := ""
+	if m.getSelectedChannel() != "" {
+		selectedChannel := m.getSelectedChannel()
+		// find the selected channel's stats
+		var channelInfo string
+		for _, stats := range channelStats {
+			if stats.Channel == selectedChannel {
+				if stats.TotalRated > 0 {
+					channelInfo = fmt.Sprintf(" %d (%.1f )", stats.Count, stats.AvgRating)
+				} else {
+					channelInfo = fmt.Sprintf(" %d", stats.Count)
+				}
+				break
+			}
+		}
+		channelCountCard = cardStyle.Width(14).Render(fmt.Sprintf(" Channel\n%s", channelInfo))
+	} else {
+		channelCountCard = cardStyle.Width(14).Render(fmt.Sprintf(" Channels\n%d unique", len(channelStats)))
+	}
+
+	return lipgloss.JoinHorizontal(lipgloss.Top, totalCard, avgCard, rewatchCard, channelCountCard)
 }
 
 func (m *StatsModel) setFocus(target int) {
@@ -429,40 +456,8 @@ func (m StatsModel) View() string {
 		return s.String()
 	}
 
-	// TODO :: refactor into separate function
 	// dashboard cards
-	cardStyle := lipgloss.NewStyle().
-		Border(lipgloss.RoundedBorder()).
-		Padding(0, 1).
-		Height(2)
-	totalCard := cardStyle.Width(12).Render(fmt.Sprintf(" Videos\n%d total", totalVideos))
-	avgCard := ""
-	if totalRated > 0 {
-		avgCard = cardStyle.Width(12).Render(fmt.Sprintf(" Rating\n%.1f/5", avgRating))
-	} else {
-		avgCard = cardStyle.Width(12).Render(" Rating\n")
-	}
-	rewatchCard := cardStyle.Width(12).Render(fmt.Sprintf(" Rewatch\n%.0f%%", float64(rewatchCount)/float64(totalVideos)*100))
-	channelCountCard := ""
-	if m.getSelectedChannel() != "" {
-		selectedChannel := m.getSelectedChannel()
-		// find the selected channel's stats
-		var channelInfo string
-		for _, stats := range channelStats {
-			if stats.Channel == selectedChannel {
-				if stats.TotalRated > 0 {
-					channelInfo = fmt.Sprintf(" %d (%.1f )", stats.Count, stats.AvgRating)
-				} else {
-					channelInfo = fmt.Sprintf(" %d", stats.Count)
-				}
-				break
-			}
-		}
-		channelCountCard = cardStyle.Width(14).Render(fmt.Sprintf(" Channel\n%s", channelInfo))
-	} else {
-		channelCountCard = cardStyle.Width(14).Render(fmt.Sprintf(" Channels\n%d unique", len(channelStats)))
-	}
-	row := lipgloss.JoinHorizontal(lipgloss.Top, totalCard, avgCard, rewatchCard, channelCountCard)
+	row := m.renderDashboardCards(totalVideos, avgRating, totalRated, rewatchCount, channelStats)
 	s.WriteString("\n" + row + "\n")
 
 	// show selected chart
@@ -551,4 +546,11 @@ func (k StatsKeyMap) FullHelp() [][]key.Binding {
 			GlobalKeyMap.Exit,
 		},
 	}
+}
+
+func getVideoChannel(video Video) string {
+	if video.Channel == "" {
+		return "Unknown Channel"
+	}
+	return video.Channel
 }

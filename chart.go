@@ -34,7 +34,6 @@ func (m StatsModel) renderChart(data ChartData, isFocused bool) string {
 		return chartStyle.Render(chart.String()) + "\n"
 	}
 
-	// Find max count for scaling
 	maxCount := 0
 	for _, count := range data.Values {
 		if count > maxCount {
@@ -42,23 +41,23 @@ func (m StatsModel) renderChart(data ChartData, isFocused bool) string {
 		}
 	}
 
-	maxBarHeight := 8
+	const maxBarHeight = 8
 
-	// Limit items if needed
+	// limit items if needed
 	items := len(data.Values)
 	if data.MaxItems > 0 && items > data.MaxItems {
 		items = data.MaxItems
 	}
 
-	// Build each row of the chart from top to bottom
+	// build each row of the chart from top to bottom
 	for row := maxBarHeight; row >= 1; row-- {
-		for i := 0; i < items; i++ {
+		for i := range items {
 			count := data.Values[i]
 			barHeight := 0
 			if maxCount > 0 && count > 0 {
 				barHeight = int(float64(maxBarHeight) * float64(count) / float64(maxCount))
 				if barHeight == 0 && count > 0 {
-					barHeight = 1 // Ensure at least 1 row for non-zero counts
+					barHeight = 1 // ensure at least 1 row for non-zero counts
 				}
 			}
 
@@ -71,14 +70,14 @@ func (m StatsModel) renderChart(data ChartData, isFocused bool) string {
 		chart.WriteString("\n")
 	}
 
-	// Add labels
-	for i := 0; i < items; i++ {
+	// labels
+	for i := range items {
 		chart.WriteString(fmt.Sprintf("%-6s", data.Labels[i]))
 	}
 	chart.WriteString("\n")
 
-	// Add values
-	for i := 0; i < items; i++ {
+	// values
+	for i := range items {
 		chart.WriteString(fmt.Sprintf("  %-4s", fmt.Sprintf("%d", data.Values[i])))
 	}
 	chart.WriteString("\n")
@@ -115,32 +114,28 @@ func (m StatsModel) prepareMonthlyChartData(monthStats []MonthStats) ChartData {
 		}
 	}
 
-	// Create a map for quick lookup of existing month data
+	// create a map for quick lookup of existing month data
 	monthMap := make(map[string]int)
 	for _, month := range monthStats {
 		monthMap[month.Month] = month.Count
 	}
 
-	// Generate continuous months from oldest to newest (up to 9 months)
 	var continuousMonths []string
 
-	// Start from the most recent month and go back
+	// start from the most recent month and go back
 	now := time.Now()
-	for i := 0; i < 9; i++ {
+	for i := range 9 {
 		monthTime := now.AddDate(0, -i, 0)
 		monthKey := monthTime.Format(MonthFormat)
-		continuousMonths = append([]string{monthKey}, continuousMonths...) // Prepend to reverse order
+		continuousMonths = append([]string{monthKey}, continuousMonths...)
 	}
 
-	// Create labels and values arrays
 	labels := make([]string, len(continuousMonths))
 	values := make([]int, len(continuousMonths))
 
 	for i, monthKey := range continuousMonths {
-		// Set the label to the month key (MM/YY format)
 		labels[i] = monthKey
 
-		// Get count from map, or 0 if month doesn't exist
 		if count, exists := monthMap[monthKey]; exists {
 			values[i] = count
 		} else {
