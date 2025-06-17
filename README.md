@@ -1,6 +1,9 @@
 # vidlogd
 
 ### A Terminal-Based YouTube Video Logger
+[![Version](https://img.shields.io/github/v/release/mamuzad/vidlogd?logo=github)](https://github.com/mamuzad/vidlogd/releases)
+[![Downloads](https://img.shields.io/github/downloads/mamuzad/vidlogd/total?logo=github)](https://github.com/mamuzad/vidlogd/releases)
+![Build](https://img.shields.io/github/actions/workflow/status/mamuzad/vidlogd/release.yml?label=build&logo=github)
 
 ## Demo
 
@@ -9,7 +12,6 @@ https://github.com/user-attachments/assets/caaa27a4-07c2-4fc4-bc71-9f4496edd108
 ### Built With
 
 ![Go Badge](https://img.shields.io/badge/Go-00ADD8?logo=go&logoColor=fff&style=for-the-badge)
-![Release](https://img.shields.io/github/v/release/mamuzad/vidlogd)
 
 ## Features
 
