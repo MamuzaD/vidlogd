@@ -81,8 +81,8 @@ vidlogd
 ## Todo
 
 - [x] Settings view
-- [ ] Build/config
-  - [ ] Package/CLI
+- [x] Build/config
+  - [x] Package/CLI
 - [x] Search and filter videos
 - [ ] Video thumbnails
   - [ ] Display image with protocols for kitty, wezterm, ghostty
