@@ -41,4 +41,4 @@ https://github.com/user-attachments/assets/caaa27a4-07c2-4fc4-bc71-9f4496edd108
 - [ ] Video thumbnails
   - [ ] Display image with protocols for kitty, wezterm, ghostty
 - [x] Statistics view
-  - [ ] Add short videos list to stats view
+  - [x] Add short videos list to stats view

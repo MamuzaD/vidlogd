@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"io"
 	"sort"
 	"strings"
 	"time"
@@ -28,17 +29,26 @@ func (i ChannelItem) Title() string {
 }
 func (i ChannelItem) Description() string { return "" }
 
+type VideoItem struct {
+	video Video
+}
+
+func (i VideoItem) FilterValue() string { return i.video.Title }
+func (i VideoItem) Title() string       { return i.video.Title }
+func (i VideoItem) Description() string { return "" }
+
 type StatsModel struct {
 	videos            []Video
 	help              help.Model
 	titleSearch       textinput.Model
 	channelSelect     list.Model
+	videoList         list.Model
 	availableChannels []string
 	filtered          []Video
 	isFiltered        bool
-	focusedSearch     int // 0 = none, 1 = title, 2 = channel
-	lastFocused       int // 0 = none, 1 = title, 2 = channel
-	chartView         int // 0 = rating, 1 = monthly
+	focusedSearch     int // 0 = none, 1 = title, 2 = channel, 3 = video list
+	lastFocused       int // 0 = none, 1 = title, 2 = channel, 3 = video list
+	viewMode          int // 0 = rating, 1 = monthly, 2 = video list, 3 = video details
 }
 
 type ChannelStats struct {
@@ -51,6 +61,28 @@ type ChannelStats struct {
 type MonthStats struct {
 	Month string
 	Count int
+}
+
+type VideoListDelegate struct{}
+
+func (d VideoListDelegate) Height() int                               { return 1 }
+func (d VideoListDelegate) Spacing() int                              { return 0 }
+func (d VideoListDelegate) Update(msg tea.Msg, m *list.Model) tea.Cmd { return nil }
+func (d VideoListDelegate) Render(w io.Writer, m list.Model, index int, item list.Item) {
+	videoItem, ok := item.(VideoItem)
+	if !ok {
+		return
+	}
+	title := truncateString(videoItem.video.Title, 43)
+	stars := renderStars(videoItem.video.Rating)
+	style := lipgloss.NewStyle().Margin(0).Padding(0, 2)
+	if index == m.Index() {
+		style = tableSelectedRowStyle.Margin(0).Padding(0, 2)
+	}
+
+	// use fixed-width format to ensure perfect alignment
+	line := fmt.Sprintf("%-43.43s%6s", title, stars)
+	fmt.Fprint(w, style.Render(line))
 }
 
 func NewStatsModel() StatsModel {
@@ -66,6 +98,20 @@ func NewStatsModel() StatsModel {
 	channelSelect.SetShowTitle(false)
 	channelSelect.SetShowHelp(false)
 
+	// Create video list with custom delegate
+	delegate := list.NewDefaultDelegate()
+	delegate.Styles.SelectedTitle = tableSelectedRowStyle.Bold(false).Margin(0, 0).Padding(0, 0)
+	delegate.Styles.SelectedDesc = tableSelectedRowStyle.Bold(false).Margin(0, 0).Padding(0, 0)
+	delegate.Styles.NormalTitle = delegate.Styles.NormalTitle.Margin(0, 0).Padding(0, 0)
+	delegate.Styles.NormalDesc = delegate.Styles.NormalDesc.Margin(0, 0).Padding(0, 0)
+
+	videoList := list.New([]list.Item{}, VideoListDelegate{}, 50, 12)
+	videoList.SetShowStatusBar(false)
+	videoList.SetFilteringEnabled(false)
+	videoList.SetShowTitle(false)
+	videoList.SetShowHelp(false)
+	videoList.SetShowPagination(false)
+
 	h := help.New()
 	h.ShowAll = false
 
@@ -73,11 +119,12 @@ func NewStatsModel() StatsModel {
 		help:          h,
 		titleSearch:   titleSearch,
 		channelSelect: channelSelect,
+		videoList:     videoList,
 		filtered:      []Video{},
 		isFiltered:    false,
 		focusedSearch: 0,
 		lastFocused:   0,
-		chartView:     0,
+		viewMode:      0,
 	}
 }
 
@@ -152,6 +199,7 @@ func (m *StatsModel) filterStats() {
 	if titleQuery == "" && selectedChannel == "" {
 		m.isFiltered = false
 		m.filtered = m.videos
+		m.updateVideoList()
 		return
 	}
 
@@ -179,6 +227,7 @@ func (m *StatsModel) filterStats() {
 			m.filtered = append(m.filtered, video)
 		}
 	}
+	m.updateVideoList()
 }
 
 func (m *StatsModel) calculateStats() (
@@ -316,8 +365,22 @@ func (m *StatsModel) renderDashboardCards(totalVideos int, avgRating float64, to
 	return lipgloss.JoinHorizontal(lipgloss.Top, totalCard, avgCard, rewatchCard, channelCountCard)
 }
 
+func (m *StatsModel) updateVideoList() {
+	videosToUse := m.videos
+	if m.isFiltered {
+		videosToUse = m.filtered
+	}
+
+	items := make([]list.Item, len(videosToUse))
+	for i, video := range videosToUse {
+		items[i] = VideoItem{video: video}
+	}
+
+	m.videoList.SetItems(items)
+}
+
 func (m *StatsModel) setFocus(target int) {
-	// Always blur title search first
+	// Always blur current inputs first
 	m.titleSearch.Blur()
 
 	// Update state
@@ -345,24 +408,25 @@ func (m *StatsModel) toggleSearch() {
 	}
 }
 
-func (m *StatsModel) cycleForward() {
-	next := (m.focusedSearch + 1) % 3
-	m.setFocus(next)
-}
+func (m StatsModel) cycleField(field *int, forward bool, numModes int) (next int) {
+	if forward {
+		next = (*field + 1) % numModes
+	} else {
+		next = (*field + numModes - 1) % numModes
+	}
 
-func (m *StatsModel) cycleBackward() {
-	next := (m.focusedSearch + 2) % 3 // +2 is same as -1 in mod 3
-	m.setFocus(next)
+	return next
 }
 
 func (m StatsModel) Update(msg tea.Msg) (StatsModel, tea.Cmd) {
-	var titleCmd, channelCmd tea.Cmd
+	var titleCmd, channelCmd, listCmd tea.Cmd
 
 	switch msg := msg.(type) {
 	case LoadVideosMsg:
 		m.videos = msg.videos
 		m.filtered = msg.videos
 		m.updateChannelList()
+		m.updateVideoList()
 	case tea.KeyMsg:
 		switch {
 		case key.Matches(msg, GlobalKeyMap.Help):
@@ -370,9 +434,11 @@ func (m StatsModel) Update(msg tea.Msg) (StatsModel, tea.Cmd) {
 		case key.Matches(msg, GlobalKeyMap.Search):
 			m.toggleSearch()
 		case key.Matches(msg, GlobalKeyMap.Cycle):
-			m.cycleForward()
+			next := m.cycleField(&m.focusedSearch, true, 3)
+			m.setFocus(next)
 		case key.Matches(msg, GlobalKeyMap.CycleBack):
-			m.cycleBackward()
+			next := m.cycleField(&m.focusedSearch, false, 3)
+			m.setFocus(next)
 		case key.Matches(msg, GlobalKeyMap.SearchBack):
 			if m.focusedSearch > 0 {
 				m.setFocus(0)
@@ -381,6 +447,7 @@ func (m StatsModel) Update(msg tea.Msg) (StatsModel, tea.Cmd) {
 		case m.focusedSearch == 1: // title search
 			m.titleSearch, titleCmd = m.titleSearch.Update(msg)
 			m.filterStats()
+			m.updateVideoList()
 			return m, titleCmd
 		case m.focusedSearch == 2: // channel select
 			// ignore left right
@@ -389,21 +456,38 @@ func (m StatsModel) Update(msg tea.Msg) (StatsModel, tea.Cmd) {
 			}
 			m.channelSelect, channelCmd = m.channelSelect.Update(msg)
 			m.filterStats()
+			m.updateVideoList()
 			return m, channelCmd
 		case m.focusedSearch == 0: // chart view
 			switch {
 			case key.Matches(msg, GlobalKeyMap.Left): // switch between chart views
-				if m.chartView == 0 {
-					m.chartView = 1
-				} else {
-					m.chartView = 0
-				}
+				m.viewMode = m.cycleField(&m.viewMode, false, 3)
 			case key.Matches(msg, GlobalKeyMap.Right):
-				if m.chartView == 0 {
-					m.chartView = 1
-				} else {
-					m.chartView = 0
+				m.viewMode = m.cycleField(&m.viewMode, true, 3)
+			case m.viewMode == 2: // video list
+				switch {
+				case key.Matches(msg, GlobalKeyMap.Up), key.Matches(msg, GlobalKeyMap.Down):
+					m.videoList, listCmd = m.videoList.Update(msg)
+					return m, listCmd
+				case key.Matches(msg, GlobalKeyMap.Select):
+					return m.handleVideoSelection()
+				case key.Matches(msg, GlobalKeyMap.Edit):
+					videosToUse := m.videos
+					if m.isFiltered {
+						videosToUse = m.filtered
+					}
+					if len(videosToUse) > 0 {
+						selectedItem := m.videoList.SelectedItem()
+						if videoItem, ok := selectedItem.(VideoItem); ok {
+							return m, func() tea.Msg {
+								return NavigateMsg{View: LogVideoView, VideoID: videoItem.video.ID}
+							}
+						}
+					}
 				}
+			default:
+				m.videoList, listCmd = m.videoList.Update(msg)
+				return m, listCmd
 			}
 		}
 	}
@@ -445,6 +529,8 @@ func (m StatsModel) View() string {
 		percentage := float64(len(m.filtered)) / float64(len(m.videos)) * 100
 		filterInfo := fmt.Sprintf("Filtered: %d/%d (%.0f%%)", len(m.filtered), len(m.videos), percentage)
 		s.WriteString(descriptionStyle.Render(filterInfo) + "\n")
+	} else {
+		s.WriteString(descriptionStyle.Render("Filtered: All videos") + "\n")
 	}
 
 	// NOTE :: calculate stats
@@ -461,15 +547,23 @@ func (m StatsModel) View() string {
 	s.WriteString("\n" + row + "\n")
 
 	// show selected chart
-	if m.chartView == 0 {
+	if m.viewMode == 0 {
 		s.WriteString(m.renderChart(m.prepareRatingChartData(ratingDist), m.focusedSearch == 0))
-	} else {
+	} else if m.viewMode == 1 {
 		s.WriteString(m.renderChart(m.prepareMonthlyChartData(monthStats), m.focusedSearch == 0))
+	} else {
+		s.WriteString(m.renderVideoList())
 	}
 
 	// show compact channels if `all channels`
 	if len(channelStats) > 0 && m.getSelectedChannel() == "" {
 		s.WriteString(m.renderCompactChannels(channelStats))
+	} else {
+		if !m.help.ShowAll {
+			s.WriteString("\n\n\n\n\n") // more padding when compact
+		} else {
+			s.WriteString("\n") // maintain consistent height
+		}
 	}
 
 	// help section
@@ -477,6 +571,52 @@ func (m StatsModel) View() string {
 	s.WriteString("\n" + m.help.View(keymap))
 
 	return s.String()
+}
+
+func (m StatsModel) renderVideoList() string {
+	listStyle := lipgloss.NewStyle().
+		Border(lipgloss.RoundedBorder()).
+		Padding(0, 1).
+		Margin(1, 0).
+		Width(56)
+
+	if m.focusedSearch == 0 && m.viewMode == 2 {
+		listStyle = listStyle.BorderForeground(primaryColor)
+	}
+
+	var content strings.Builder
+	videosToUse := m.videos
+	if m.isFiltered {
+		videosToUse = m.filtered
+	}
+	content.WriteString(fmt.Sprintf("   Videos (%d/%d)\n", m.videoList.Index()+1, len(videosToUse)))
+
+	if len(m.filtered) == 0 {
+		content.WriteString("No videos to display")
+	} else {
+		content.WriteString(m.videoList.View())
+	}
+
+	return listStyle.Render(content.String()) + "\n"
+}
+
+func (m StatsModel) handleVideoSelection() (StatsModel, tea.Cmd) {
+	videosToUse := m.videos
+	if m.isFiltered {
+		videosToUse = m.filtered
+	}
+
+	if len(videosToUse) == 0 {
+		return m, nil
+	}
+
+	selectedItem := m.videoList.SelectedItem()
+	if videoItem, ok := selectedItem.(VideoItem); ok {
+		return m, func() tea.Msg {
+			return NavigateMsg{View: LogDetailsView, VideoID: videoItem.video.ID}
+		}
+	}
+	return m, nil
 }
 
 func (m StatsModel) renderCompactChannels(channelStats []ChannelStats) string {
@@ -501,18 +641,17 @@ func (m StatsModel) renderCompactChannels(channelStats []ChannelStats) string {
 		if stats.TotalRated > 0 {
 			avgStr = fmt.Sprintf("(%.1f)", stats.AvgRating)
 		}
-		list.WriteString(fmt.Sprintf("%-15s  %-3d%-6s",
-			m.truncateString(stats.Channel, 12), stats.Count, avgStr))
+		list.WriteString(fmt.Sprintf("%-15s  %-3d%-6s", stats.Channel, stats.Count, avgStr))
 	}
 
 	return listStyle.Render(list.String()) + "\n"
 }
 
-func (m StatsModel) truncateString(s string, maxLen int) string {
+func truncateString(s string, maxLen int) string {
 	if len(s) <= maxLen {
 		return s
 	}
-	return s[:maxLen] + "..."
+	return s[:maxLen] + "…"
 }
 
 type StatsKeyMap struct{}
@@ -542,6 +681,8 @@ func (k StatsKeyMap) FullHelp() [][]key.Binding {
 		},
 		{
 			GlobalKeyMap.Help,
+			GlobalKeyMap.Select,
+			GlobalKeyMap.Edit,
 			GlobalKeyMap.Back,
 			GlobalKeyMap.Exit,
 		},

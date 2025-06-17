@@ -200,7 +200,7 @@ func (m LogDetailsModel) View() string {
 
 	var s strings.Builder
 
-	s.WriteString(headerStyle.Render("log details"))
+	s.WriteString(headerStyle.Render("log details") + "\n\n")
 
 	// video info
 	s.WriteString("Title: " + m.video.Title + "\n\n")

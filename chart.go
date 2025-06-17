@@ -105,15 +105,6 @@ func (m StatsModel) prepareRatingChartData(ratingDist map[float64]int) ChartData
 }
 
 func (m StatsModel) prepareMonthlyChartData(monthStats []MonthStats) ChartData {
-	if len(monthStats) == 0 {
-		return ChartData{
-			Title:    "  Months",
-			Labels:   []string{},
-			Values:   []int{},
-			MaxItems: 9,
-		}
-	}
-
 	// create a map for quick lookup of existing month data
 	monthMap := make(map[string]int)
 	for _, month := range monthStats {
