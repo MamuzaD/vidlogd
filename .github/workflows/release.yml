@@ -5,6 +5,9 @@ on:
     tags:
       - 'v*'
 
+permissions:
+  contents: write
+
 jobs:
   build:
     runs-on: ubuntu-latest
@@ -31,6 +34,8 @@ jobs:
   release:
     needs: build
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -41,11 +46,13 @@ jobs:
           name: vidlogd-binaries
           path: bin/
 
+      - name: List downloaded files
+        run: ls -la bin/
+
       - name: Create Release
         uses: softprops/action-gh-release@v2
         with:
           files: |
-            bin/vidlogd-darwin-amd64
             bin/vidlogd-darwin-arm64
             bin/vidlogd-linux-amd64
             bin/vidlogd-windows-amd64.exe
