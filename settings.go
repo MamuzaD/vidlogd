@@ -18,6 +18,7 @@ type SettingType int
 const (
 	VimMotionsToggle SettingType = iota
 	ThemeSelector
+	APIKeyEditor
 )
 
 func getDefaultSettings() AppSettings {
@@ -70,12 +71,15 @@ func (d SettingItemDelegate) Render(w io.Writer, m list.Model, index int, listIt
 
 type SettingsModel struct {
 	list list.Model
+	form *FormModel // for API key editing
 }
 
 func NewSettingsModel() SettingsModel {
 	Settings = loadSettings()
 
 	UpdateKeyMap()
+
+	displayAPIKey := renderAPIKey()
 
 	items := []list.Item{
 		SettingItem{
@@ -91,6 +95,13 @@ func NewSettingsModel() SettingsModel {
 			description: "color theme for the vidlogd",
 			value:       Settings.Theme,
 			options:     []string{"red", "blue", "green", "purple", "orange", "teal", "pink"},
+		},
+		SettingItem{
+			settingType: APIKeyEditor,
+			title:       "YouTube API Key",
+			description: "set your YouTube Data API v3 key",
+			value:       displayAPIKey,
+			options:     []string{"edit"},
 		},
 	}
 
@@ -121,6 +132,21 @@ func (m SettingsModel) Init() tea.Cmd {
 
 func (m SettingsModel) Update(msg tea.Msg) (SettingsModel, tea.Cmd) {
 	switch msg := msg.(type) {
+	case ClearSettingsFormMsg:
+		m.form = nil
+
+		items := m.list.Items()
+		for i, item := range items {
+			if settingItem, ok := item.(SettingItem); ok && settingItem.settingType == APIKeyEditor {
+				displayAPIKey := renderAPIKey()
+				settingItem.value = displayAPIKey
+				items[i] = settingItem
+				break
+			}
+		}
+		m.list.SetItems(items)
+		return m, nil
+
 	case tea.WindowSizeMsg:
 		m.list.SetWidth(msg.Width)
 		return m, nil
@@ -131,12 +157,20 @@ func (m SettingsModel) Update(msg tea.Msg) (SettingsModel, tea.Cmd) {
 				return NavigateMsg{View: MainMenuView}
 			}
 		}
-		if key.Matches(msg, GlobalKeyMap.Select, GlobalKeyMap.Right) {
-			return m.cycleSetting()
+		// let form handle select if active
+		if m.form == nil && key.Matches(msg, GlobalKeyMap.Select, GlobalKeyMap.Right) {
+			return m.handleSettingSelection()
 		}
 		if key.Matches(msg, GlobalKeyMap.Left) {
 			return m.cycleSetting()
 		}
+	}
+
+	// handle form updates
+	if m.form != nil {
+		form, cmd := m.form.Update(msg)
+		m.form = &form
+		return m, cmd
 	}
 
 	var cmd tea.Cmd
@@ -190,7 +224,49 @@ func (m SettingsModel) cycleSetting() (SettingsModel, tea.Cmd) {
 	return m, nil
 }
 
+func (m SettingsModel) handleSettingSelection() (SettingsModel, tea.Cmd) {
+	selectedItem, ok := m.list.SelectedItem().(SettingItem)
+	if !ok {
+		return m, nil
+	}
+
+	switch selectedItem.settingType {
+	case APIKeyEditor:
+		fields := []FormField{
+			{Placeholder: "your_youtube_api_key_here", Label: "YouTube API Key:", Required: false, CharLimit: 100, Width: 60, Type: FormFieldText, Value: Settings.APIKey},
+		}
+
+		form := NewForm("YouTube API Key", fields, "save")
+		form.SetHandlers(
+			func(f FormModel) tea.Cmd {
+				apiKeyValue := f.GetValue(0)
+				Settings.APIKey = apiKeyValue
+				if err := saveSettings(Settings); err != nil {
+					// TODO: handle error
+				}
+
+				return func() tea.Msg {
+					return ClearSettingsFormMsg{}
+				}
+			},
+			func() tea.Cmd {
+				return func() tea.Msg {
+					return ClearSettingsFormMsg{}
+				}
+			},
+		)
+		m.form = &form
+		return m, nil
+	default:
+		return m.cycleSetting()
+	}
+}
+
 func (m SettingsModel) View() string {
+	if m.form != nil {
+		return m.form.View()
+	}
+
 	header := headerStyle.Render("settings")
 	content := header + "\n\n" + m.list.View()
 
@@ -222,4 +298,21 @@ func ApplyTheme(theme string) {
 	default: // red
 		SetThemeColors(red, redBg)
 	}
+}
+
+type ClearSettingsFormMsg struct{}
+
+func renderAPIKey() (apiKey string) {
+	apiKey = Settings.APIKey
+	if apiKey != "" {
+		if len(apiKey) > 8 {
+			apiKey = apiKey[:8] + "***"
+		} else {
+			apiKey = "***"
+		}
+	} else {
+		apiKey = "not set"
+	}
+
+	return
 }

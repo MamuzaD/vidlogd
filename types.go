@@ -27,6 +27,7 @@ type Video struct {
 type AppSettings struct {
 	VimMotions bool   `json:"vim_motions"`
 	Theme      string `json:"theme"`
+	APIKey     string `json:"api_key"`
 }
 
 var (

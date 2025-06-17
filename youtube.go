@@ -37,9 +37,31 @@ type YouTubeAPIResponse struct {
 
 var youtubeAPIKey string
 
-func initYouTubeAPI() {
+func loadYouTubeAPI() {
+	if youtubeAPIKey != "" {
+		return
+	}
+
 	godotenv.Load()
 	youtubeAPIKey = os.Getenv("YOUTUBE_API_KEY")
+
+	// if not found in environment, try settings
+	if youtubeAPIKey == "" {
+		youtubeAPIKey = Settings.APIKey
+	}
+}
+
+func getYouTubeAPIKey() string {
+	// use latest settings
+	if Settings.APIKey != "" {
+		return Settings.APIKey
+	}
+
+	// fallback to env
+	if youtubeAPIKey == "" {
+		loadYouTubeAPI()
+	}
+	return youtubeAPIKey
 }
 
 func isValidYouTubeURL(urlStr string) bool {
@@ -100,12 +122,10 @@ func extractVideoID(urlStr string) string {
 // returns MetadataFetchedMsg containing the Metadata (video title, channel, release date)
 func fetchYouTubeMetadata(urlStr string) tea.Cmd {
 	return func() tea.Msg {
-		if youtubeAPIKey == "" {
-			initYouTubeAPI()
-		}
+		youtubeAPIKey := getYouTubeAPIKey()
 
 		if youtubeAPIKey == "" {
-			return MetadataFetchedMsg{Error: "add YOUTUBE_API_KEY to your .env file"}
+			return MetadataFetchedMsg{Error: "add YOUTUBE_API_KEY to your .env file or set it in settings"}
 		}
 
 		if !isValidYouTubeURL(urlStr) {
