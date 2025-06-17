@@ -1,4 +1,4 @@
-module vidlogd
+module github.com/mamuzad/vidlogd
 
 go 1.24.3
 
