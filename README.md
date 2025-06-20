@@ -7,7 +7,7 @@
 
 ## Demo
 
-https://github.com/user-attachments/assets/caaa27a4-07c2-4fc4-bc71-9f4496edd108
+https://github.com/user-attachments/assets/fb47b70a-3222-4f11-b1c1-2abda8419478
 
 ### Built With
 
@@ -51,6 +51,9 @@ cd vidlogd
 make build
 ./bin/vidlogd
 ```
+
+### Option 3: Install from releases
+[Grab your specific machine installation here](https://github.com/mamuzad/vidlogd/releases)
 
 ## Quick Start
 
