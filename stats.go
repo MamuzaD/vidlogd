@@ -63,6 +63,11 @@ type MonthStats struct {
 	Count int
 }
 
+type StreakInfo struct {
+	VideoCount int
+	DaySpan    int
+}
+
 type VideoListDelegate struct{}
 
 func (d VideoListDelegate) Height() int                               { return 1 }
@@ -329,19 +334,118 @@ func (m *StatsModel) renderStars(rating float64) string {
 	return ratingStr
 }
 
-func (m *StatsModel) renderDashboardCards(totalVideos int, avgRating float64, totalRated int, rewatchCount int, channelStats []ChannelStats) string {
-	cardStyle := lipgloss.NewStyle().
-		Border(lipgloss.RoundedBorder()).
-		Padding(0, 1).
-		Height(2)
-	totalCard := cardStyle.Width(12).Render(fmt.Sprintf(" Videos\n%d total", totalVideos))
+func (m *StatsModel) getStreaks() (StreakInfo, StreakInfo) {
+	videosToUse := m.videos
+	if m.isFiltered {
+		videosToUse = m.filtered
+	}
+
+	if len(videosToUse) == 0 {
+		return StreakInfo{0, 0}, StreakInfo{0, 0}
+	}
+
+	var dateGroups []struct {
+		date  time.Time
+		count int
+	}
+
+	for _, video := range videosToUse {
+		if video.LogDate == "" {
+			continue
+		}
+
+		logTime, err := time.Parse(DateTimeFormat, video.LogDate)
+		if err != nil {
+			continue
+		}
+
+		// truncate to date for comparison
+		logDate := logTime.Truncate(24 * time.Hour)
+
+		// date exists already
+		if len(dateGroups) > 0 && dateGroups[len(dateGroups)-1].date.Equal(logDate) {
+			dateGroups[len(dateGroups)-1].count++
+		} else {
+			dateGroups = append(dateGroups, struct {
+				date  time.Time
+				count int
+			}{logDate, 1})
+		}
+	}
+
+	if len(dateGroups) == 0 {
+		return StreakInfo{0, 0}, StreakInfo{0, 0}
+	}
+
+	// calculate current streak
+	var currentStreak StreakInfo
+	today := time.Now().Truncate(24 * time.Hour)
+	mostRecentDate := dateGroups[0].date
+
+	// check if recent date is today or yesterday
+	daysSinceLastWatch := int(today.Sub(mostRecentDate).Hours() / 24)
+	if daysSinceLastWatch <= 1 {
+		currentStreak.VideoCount = dateGroups[0].count
+		currentStreak.DaySpan = 1
+
+		for i := 1; i < len(dateGroups); i++ {
+			prevDate := dateGroups[i-1].date
+			currDate := dateGroups[i].date
+
+			// check if dates are consecutive
+			daysDiff := int(prevDate.Sub(currDate).Hours() / 24)
+			if daysDiff == 1 {
+				currentStreak.VideoCount += dateGroups[i].count
+				currentStreak.DaySpan++
+			} else {
+				break
+			}
+		}
+	}
+
+	// calculate best streak
+	var longestStreak StreakInfo
+	var tempStreak StreakInfo
+
+	for i := range dateGroups {
+		if i == 0 {
+			tempStreak = StreakInfo{VideoCount: dateGroups[i].count, DaySpan: 1}
+		} else {
+			prevDate := dateGroups[i-1].date
+			currDate := dateGroups[i].date
+
+			// check if dates are consecutive
+			daysDiff := int(prevDate.Sub(currDate).Hours() / 24)
+			if daysDiff == 1 {
+				tempStreak.VideoCount += dateGroups[i].count
+				tempStreak.DaySpan++
+			} else {
+				// streak broken
+				if tempStreak.VideoCount > longestStreak.VideoCount {
+					longestStreak = tempStreak
+				}
+				tempStreak = StreakInfo{VideoCount: dateGroups[i].count, DaySpan: 1}
+			}
+		}
+	}
+	if tempStreak.VideoCount > longestStreak.VideoCount {
+		longestStreak = tempStreak
+	}
+
+	return currentStreak, longestStreak
+}
+
+func (m *StatsModel) getDasboardStrings(totalVideos int, avgRating float64,
+	totalRated int, rewatchCount int, channelStats []ChannelStats,
+) (string, string, string, string) {
+	totalCard := fmt.Sprintf(" Videos\n%d total", totalVideos)
 	avgCard := ""
 	if totalRated > 0 {
-		avgCard = cardStyle.Width(12).Render(fmt.Sprintf(" Rating\n%.1f/5", avgRating))
+		avgCard = fmt.Sprintf(" Rating\n%.1f/5", avgRating)
 	} else {
-		avgCard = cardStyle.Width(12).Render(" Rating\n")
+		avgCard = " Rating\n"
 	}
-	rewatchCard := cardStyle.Width(12).Render(fmt.Sprintf(" Rewatch\n%.0f%%", float64(rewatchCount)/float64(totalVideos)*100))
+	rewatchCard := fmt.Sprintf(" Rewatch\n%.0f%%", float64(rewatchCount)/float64(totalVideos)*100)
 	channelCountCard := ""
 	if m.getSelectedChannel() != "" {
 		selectedChannel := m.getSelectedChannel()
@@ -357,12 +461,32 @@ func (m *StatsModel) renderDashboardCards(totalVideos int, avgRating float64, to
 				break
 			}
 		}
-		channelCountCard = cardStyle.Width(14).Render(fmt.Sprintf(" Channel\n%s", channelInfo))
+		channelCountCard = fmt.Sprintf(" Channel\n%s", channelInfo)
 	} else {
-		channelCountCard = cardStyle.Width(14).Render(fmt.Sprintf(" Channels\n%d unique", len(channelStats)))
+		channelCountCard = fmt.Sprintf(" Channels\n%d unique", len(channelStats))
 	}
 
-	return lipgloss.JoinHorizontal(lipgloss.Top, totalCard, avgCard, rewatchCard, channelCountCard)
+	return totalCard, avgCard, rewatchCard, channelCountCard
+}
+
+func (m *StatsModel) renderDashboardCards(str1 string, str2 string, str3 *string, str4 *string) string {
+	cardStyle := lipgloss.NewStyle().
+		Border(lipgloss.RoundedBorder()).
+		Padding(0, 1).
+		Height(2)
+
+	if str3 == nil || str4 == nil {
+		card1 := cardStyle.Width(26).Render(str1)
+		card2 := cardStyle.Width(28).Render(str2)
+		return lipgloss.JoinHorizontal(lipgloss.Top, card1, card2)
+	}
+
+	card1 := cardStyle.Width(12).Render(str1)
+	card2 := cardStyle.Width(12).Render(str2)
+	card3 := cardStyle.Width(12).Render(*str3)
+	card4 := cardStyle.Width(14).Render(*str4)
+
+	return lipgloss.JoinHorizontal(lipgloss.Top, card1, card2, card3, card4)
 }
 
 func (m *StatsModel) updateVideoList() {
@@ -542,8 +666,16 @@ func (m StatsModel) View() string {
 		return s.String()
 	}
 
+	// streak cards
+	currentStreak, longestStreak := m.getStreaks()
+	currenStreakCard := fmt.Sprintf("Current streak: \n%d videos in %d days", currentStreak.VideoCount, currentStreak.DaySpan)
+	longestStreakCard := fmt.Sprintf("Best streak: \n%d videos in %d days", longestStreak.VideoCount, longestStreak.DaySpan)
+	streakRow := m.renderDashboardCards(longestStreakCard, currenStreakCard, nil, nil)
+	s.WriteString("\n" + streakRow + "\n")
+
 	// dashboard cards
-	row := m.renderDashboardCards(totalVideos, avgRating, totalRated, rewatchCount, channelStats)
+	totalCard, avgCard, rewatchCard, channelCountCard := m.getDasboardStrings(totalVideos, avgRating, totalRated, rewatchCount, channelStats)
+	row := m.renderDashboardCards(totalCard, avgCard, &rewatchCard, &channelCountCard)
 	s.WriteString("\n" + row + "\n")
 
 	// show selected chart
