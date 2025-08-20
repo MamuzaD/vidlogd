@@ -1,4 +1,4 @@
-package main
+package views
 
 import (
 	"fmt"
@@ -7,6 +7,8 @@ import (
 	"github.com/charmbracelet/bubbles/key"
 	"github.com/charmbracelet/bubbles/list"
 	tea "github.com/charmbracelet/bubbletea"
+	"github.com/mamuzad/vidlogd/internal/models"
+	"github.com/mamuzad/vidlogd/internal/ui"
 )
 
 type MenuItem struct {
@@ -26,13 +28,13 @@ func (d MenuItemDelegate) Render(w io.Writer, m list.Model, index int, listItem 
 		return
 	}
 
-	style := menuItemStyle
+	style := ui.MenuItemStyle
 	if index == m.Index() {
-		style = style.Background(primaryColor).Foreground(white)
+		style = style.Background(ui.PrimaryColor).Foreground(ui.White)
 	}
 
 	styledText := style.Render(i.title)
-	centeredText := centerHorizontally(styledText, m.Width())
+	centeredText := ui.CenterHorizontally(styledText, m.Width())
 	fmt.Fprint(w, centeredText)
 }
 
@@ -74,10 +76,10 @@ func (m MainMenuModel) Update(msg tea.Msg) (MainMenuModel, tea.Cmd) {
 		return m, nil
 
 	case tea.KeyMsg:
-		if key.Matches(msg, GlobalKeyMap.Exit, GlobalKeyMap.Back) {
+		if key.Matches(msg, ui.GlobalKeyMap.Exit, ui.GlobalKeyMap.Back) {
 			return m, tea.Quit
 		}
-		if key.Matches(msg, GlobalKeyMap.Select) {
+		if key.Matches(msg, ui.GlobalKeyMap.Select) {
 			return m.handleSelection()
 		}
 	}
@@ -96,19 +98,19 @@ func (m MainMenuModel) handleSelection() (MainMenuModel, tea.Cmd) {
 	switch selectedItem.title {
 	case "log video":
 		return m, func() tea.Msg {
-			return NavigateMsg{View: LogVideoView}
+			return models.NavigateMsg{View: models.LogVideoView}
 		}
 	case "view logs":
 		return m, func() tea.Msg {
-			return NavigateMsg{View: LogListView}
+			return models.NavigateMsg{View: models.LogListView}
 		}
 	case "stats":
 		return m, func() tea.Msg {
-			return NavigateMsg{View: StatsView}
+			return models.NavigateMsg{View: models.StatsView}
 		}
 	case "settings":
 		return m, func() tea.Msg {
-			return NavigateMsg{View: SettingsView}
+			return models.NavigateMsg{View: models.SettingsView}
 		}
 	case "exit":
 		return m, tea.Quit
@@ -119,5 +121,5 @@ func (m MainMenuModel) handleSelection() (MainMenuModel, tea.Cmd) {
 func (m MainMenuModel) View() string {
 	width := m.list.Width()
 
-	return centerHorizontally(m.list.View(), width)
+	return ui.CenterHorizontally(m.list.View(), width)
 }

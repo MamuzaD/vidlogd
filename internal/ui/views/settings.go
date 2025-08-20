@@ -1,4 +1,4 @@
-package main
+package views
 
 import (
 	"fmt"
@@ -8,10 +8,12 @@ import (
 	"github.com/charmbracelet/bubbles/list"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
+	"github.com/mamuzad/vidlogd/internal/models"
+	"github.com/mamuzad/vidlogd/internal/ui"
 )
 
 // global settings
-var Settings AppSettings
+var Settings models.AppSettings
 
 type SettingType int
 
@@ -20,13 +22,6 @@ const (
 	ThemeSelector
 	APIKeyEditor
 )
-
-func getDefaultSettings() AppSettings {
-	return AppSettings{
-		VimMotions: true,
-		Theme:      "red",
-	}
-}
 
 type SettingItem struct {
 	settingType SettingType
@@ -53,18 +48,18 @@ func (d SettingItemDelegate) Render(w io.Writer, m list.Model, index int, listIt
 
 	var titleStyle, valueStyle lipgloss.Style
 	if isSelected {
-		titleStyle = menuItemStyle.Background(primaryColor).Foreground(white)
-		valueStyle = menuItemStyle.Background(primaryColor).Foreground(white)
+		titleStyle = ui.MenuItemStyle.Background(ui.PrimaryColor).Foreground(ui.White)
+		valueStyle = ui.MenuItemStyle.Background(ui.PrimaryColor).Foreground(ui.White)
 	} else {
-		titleStyle = menuItemStyle
-		valueStyle = menuItemStyle.Foreground(gray)
+		titleStyle = ui.MenuItemStyle
+		valueStyle = ui.MenuItemStyle.Foreground(ui.Gray)
 	}
 
 	title := titleStyle.Render(i.title)
 	value := valueStyle.Render(fmt.Sprintf("[%s]", i.value))
 
 	line1 := title + " " + value
-	line2 := descriptionStyle.Render(i.description)
+	line2 := ui.DescriptionStyle.Render(i.description)
 	content := line1 + "\n" + line2
 	fmt.Fprint(w, content)
 }
@@ -75,9 +70,9 @@ type SettingsModel struct {
 }
 
 func NewSettingsModel() SettingsModel {
-	Settings = loadSettings()
+	Settings = models.LoadSettings()
 
-	UpdateKeyMap()
+	ui.UpdateKeyMap()
 
 	displayAPIKey := renderAPIKey()
 
@@ -152,16 +147,16 @@ func (m SettingsModel) Update(msg tea.Msg) (SettingsModel, tea.Cmd) {
 		return m, nil
 
 	case tea.KeyMsg:
-		if key.Matches(msg, GlobalKeyMap.Back) {
+		if key.Matches(msg, ui.GlobalKeyMap.Back) {
 			return m, func() tea.Msg {
-				return NavigateMsg{View: MainMenuView}
+				return models.NavigateMsg{View: models.MainMenuView}
 			}
 		}
 		// let form handle select if active
-		if m.form == nil && key.Matches(msg, GlobalKeyMap.Select, GlobalKeyMap.Right) {
+		if m.form == nil && key.Matches(msg, ui.GlobalKeyMap.Select, ui.GlobalKeyMap.Right) {
 			return m.handleSettingSelection()
 		}
-		if key.Matches(msg, GlobalKeyMap.Left) {
+		if key.Matches(msg, ui.GlobalKeyMap.Left) {
 			return m.cycleSetting()
 		}
 	}
@@ -199,14 +194,14 @@ func (m SettingsModel) cycleSetting() (SettingsModel, tea.Cmd) {
 	switch selectedItem.settingType {
 	case VimMotionsToggle:
 		Settings.VimMotions = newValue == "enabled"
-		UpdateKeyMap()
+		ui.UpdateKeyMap()
 	case ThemeSelector:
 		Settings.Theme = newValue
 		ApplyTheme(Settings.Theme)
 	}
 
 	// save settings to file
-	if err := saveSettings(Settings); err != nil {
+	if err := models.SaveSettings(Settings); err != nil {
 		// TODO: add error ui
 	}
 
@@ -241,7 +236,7 @@ func (m SettingsModel) handleSettingSelection() (SettingsModel, tea.Cmd) {
 			func(f FormModel) tea.Cmd {
 				apiKeyValue := f.GetValue(0)
 				Settings.APIKey = apiKeyValue
-				if err := saveSettings(Settings); err != nil {
+				if err := models.SaveSettings(Settings); err != nil {
 					// TODO: handle error
 				}
 
@@ -267,16 +262,16 @@ func (m SettingsModel) View() string {
 		return m.form.View()
 	}
 
-	header := headerStyle.Render("settings")
+	header := ui.HeaderStyle.Render("settings")
 	content := header + "\n\n" + m.list.View()
 
-	return centerHorizontally(content, m.list.Width())
+	return ui.CenterHorizontally(content, m.list.Width())
 }
 
 // load and apply all settings at startup
 func LoadAndApplySettings() {
-	Settings = loadSettings()
-	UpdateKeyMap()
+	Settings = models.LoadSettings()
+	ui.UpdateKeyMap()
 	ApplyTheme(Settings.Theme)
 }
 
@@ -284,19 +279,19 @@ func LoadAndApplySettings() {
 func ApplyTheme(theme string) {
 	switch theme {
 	case "blue":
-		SetThemeColors(blue, blueBg)
+		ui.SetThemeColors(ui.Blue, ui.BlueBg)
 	case "green":
-		SetThemeColors(green, greenBg)
+		ui.SetThemeColors(ui.Green, ui.GreenBg)
 	case "purple":
-		SetThemeColors(purple, purpleBg)
+		ui.SetThemeColors(ui.Purple, ui.PurpleBg)
 	case "orange":
-		SetThemeColors(orange, orangeBg)
+		ui.SetThemeColors(ui.Orange, ui.OrangeBg)
 	case "teal":
-		SetThemeColors(teal, tealBg)
+		ui.SetThemeColors(ui.Teal, ui.TealBg)
 	case "pink":
-		SetThemeColors(pink, pinkBg)
+		ui.SetThemeColors(ui.Pink, ui.PinkBg)
 	default: // red
-		SetThemeColors(red, redBg)
+		ui.SetThemeColors(ui.Red, ui.RedBg)
 	}
 }
 

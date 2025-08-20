@@ -1,4 +1,4 @@
-package main
+package views
 
 import (
 	"fmt"
@@ -14,6 +14,9 @@ import (
 	"github.com/charmbracelet/bubbles/textinput"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
+	"github.com/mamuzad/vidlogd/internal/models"
+	"github.com/mamuzad/vidlogd/internal/ui"
+	"github.com/mamuzad/vidlogd/internal/services"
 )
 
 const (
@@ -76,10 +79,10 @@ type FormKeyMap struct {
 
 func (k FormKeyMap) ShortHelp() []key.Binding {
 	keys := []key.Binding{
-		GlobalKeyMap.NextField,
-		GlobalKeyMap.PrevField,
-		GlobalKeyMap.Select,
-		GlobalKeyMap.Help,
+		ui.GlobalKeyMap.NextField,
+		ui.GlobalKeyMap.PrevField,
+		ui.GlobalKeyMap.Select,
+		ui.GlobalKeyMap.Help,
 	}
 
 	return keys
@@ -88,34 +91,34 @@ func (k FormKeyMap) ShortHelp() []key.Binding {
 func (k FormKeyMap) FullHelp() [][]key.Binding {
 	baseKeys := [][]key.Binding{
 		{
-			GlobalKeyMap.NextField,
-			GlobalKeyMap.PrevField,
-			GlobalKeyMap.Select,
+			ui.GlobalKeyMap.NextField,
+			ui.GlobalKeyMap.PrevField,
+			ui.GlobalKeyMap.Select,
 		},
 		{
-			GlobalKeyMap.Save,
-			GlobalKeyMap.Cancel,
-			GlobalKeyMap.Help,
+			ui.GlobalKeyMap.Save,
+			ui.GlobalKeyMap.Cancel,
+			ui.GlobalKeyMap.Help,
 		},
 	}
 
 	// add vim column if vim is enabled
 	if Settings.VimMotions {
 		vimKeys := []key.Binding{
-			GlobalKeyMap.VisualMode,
-			GlobalKeyMap.Paste,
-			GlobalKeyMap.Yank,
+			ui.GlobalKeyMap.VisualMode,
+			ui.GlobalKeyMap.Paste,
+			ui.GlobalKeyMap.Yank,
 		}
 		if k.vimMode == "normal" {
-			vimKeys = append(vimKeys, GlobalKeyMap.InsertMode)
+			vimKeys = append(vimKeys, ui.GlobalKeyMap.InsertMode)
 		} else {
-			vimKeys = append(vimKeys, GlobalKeyMap.NormalMode)
+			vimKeys = append(vimKeys, ui.GlobalKeyMap.NormalMode)
 		}
 		baseKeys = append(baseKeys, vimKeys)
 	}
 
 	if k.onRating {
-		baseKeys = append(baseKeys, []key.Binding{GlobalKeyMap.Rating})
+		baseKeys = append(baseKeys, []key.Binding{ui.GlobalKeyMap.Rating})
 	}
 
 	return baseKeys
@@ -172,7 +175,7 @@ func NewForm(title string, fields []FormField, saveText string) FormModel {
 	}
 }
 
-func NewVideoLogForm(editing bool, existingVideo *Video) FormModel {
+func NewVideoLogForm(editing bool, existingVideo *models.Video) FormModel {
 	fields := []FormField{
 		{Placeholder: "https://youtube.com/watch?v=...", Label: "YouTube URL:", Required: true, CharLimit: 200, Width: 60, Type: FormFieldURL},
 		{Placeholder: "video title", Label: "Title:", Required: true, CharLimit: 100, Width: 60, Type: FormFieldText},
@@ -280,7 +283,7 @@ func (m FormModel) Update(msg tea.Msg) (FormModel, tea.Cmd) {
 	var cmds []tea.Cmd
 
 	switch msg := msg.(type) {
-	case MetadataFetchedMsg:
+	case services.MetadataFetchedMsg:
 		// auto-fill form fields with YouTube metadata
 		if msg.Error != "" {
 			m.touched[url] = true // mark URL as touched so error shows
@@ -311,7 +314,7 @@ func (m FormModel) Update(msg tea.Msg) (FormModel, tea.Cmd) {
 				m.fieldErrors[release] = ""
 			}
 			if len(m.inputs) > logDate {
-				currentDate := time.Now().Format(DateTimeFormat)
+				currentDate := time.Now().Format(models.DateTimeFormat)
 				m.inputs[logDate].SetValue(currentDate)
 				m.fieldErrors[logDate] = ""
 			}
@@ -320,16 +323,16 @@ func (m FormModel) Update(msg tea.Msg) (FormModel, tea.Cmd) {
 
 	case tea.KeyMsg:
 		switch {
-		case key.Matches(msg, GlobalKeyMap.Help):
+		case key.Matches(msg, ui.GlobalKeyMap.Help):
 			m.help.ShowAll = !m.help.ShowAll
 			return m, nil
-		case key.Matches(msg, GlobalKeyMap.Exit), key.Matches(msg, GlobalKeyMap.Cancel):
+		case key.Matches(msg, ui.GlobalKeyMap.Exit), key.Matches(msg, ui.GlobalKeyMap.Cancel):
 			if m.onCancel != nil {
 				return m, m.onCancel()
 			}
 			return m, nil
 		// vim keys
-		case key.Matches(msg, GlobalKeyMap.InsertMode):
+		case key.Matches(msg, ui.GlobalKeyMap.InsertMode):
 			// only handle if vim is enabled and we're in normal mode
 			if Settings.VimMotions && m.vimMode == "normal" {
 				m.vimMode = "insert"
@@ -339,7 +342,7 @@ func (m FormModel) Update(msg tea.Msg) (FormModel, tea.Cmd) {
 				}
 				return m, textinput.Blink
 			}
-		case key.Matches(msg, GlobalKeyMap.NormalMode):
+		case key.Matches(msg, ui.GlobalKeyMap.NormalMode):
 			// only handle if vim is enabled and we're in insert mode
 			if Settings.VimMotions && m.vimMode == "insert" {
 				m.vimMode = "normal"
@@ -349,7 +352,7 @@ func (m FormModel) Update(msg tea.Msg) (FormModel, tea.Cmd) {
 				}
 				return m, nil
 			}
-		case key.Matches(msg, GlobalKeyMap.Paste):
+		case key.Matches(msg, ui.GlobalKeyMap.Paste):
 			if Settings.VimMotions && m.vimMode == "normal" {
 				// get clipboard content
 				clipboardContent, err := clipboard.ReadAll()
@@ -360,19 +363,19 @@ func (m FormModel) Update(msg tea.Msg) (FormModel, tea.Cmd) {
 					m.inputs[m.focused].SetValue(clipboardContent)
 				}
 			}
-		case key.Matches(msg, GlobalKeyMap.NextField):
+		case key.Matches(msg, ui.GlobalKeyMap.NextField):
 			if !Settings.VimMotions || m.vimMode == "normal" {
 				m.validateCurrentField()
 				m.nextInput()
 			}
-		case key.Matches(msg, GlobalKeyMap.PrevField):
+		case key.Matches(msg, ui.GlobalKeyMap.PrevField):
 			if !Settings.VimMotions || m.vimMode == "normal" {
 				m.validateCurrentField()
 				m.prevInput()
 			}
-		case key.Matches(msg, GlobalKeyMap.Save):
+		case key.Matches(msg, ui.GlobalKeyMap.Save):
 			return m.handleSave()
-		case key.Matches(msg, GlobalKeyMap.Select):
+		case key.Matches(msg, ui.GlobalKeyMap.Select):
 			if m.focused == len(m.inputs) {
 				return m.handleSave()
 			} else {
@@ -389,28 +392,28 @@ func (m FormModel) Update(msg tea.Msg) (FormModel, tea.Cmd) {
 				m.validateCurrentField()
 				m.nextInput()
 			}
-		case key.Matches(msg, GlobalKeyMap.RatingDown):
+		case key.Matches(msg, ui.GlobalKeyMap.RatingDown):
 			if m.focused == rating {
 				if m.ratingValue > 0 {
 					m.ratingValue -= 0.5
 				}
 				return m, nil
 			}
-		case key.Matches(msg, GlobalKeyMap.RatingUp):
+		case key.Matches(msg, ui.GlobalKeyMap.RatingUp):
 			if m.focused == rating {
 				if m.ratingValue < 5 {
 					m.ratingValue += 0.5
 				}
 				return m, nil
 			}
-		case key.Matches(msg, GlobalKeyMap.Rating):
+		case key.Matches(msg, ui.GlobalKeyMap.Rating):
 			if m.focused == rating {
 				ratingStr := msg.String()
 				rating, _ := strconv.ParseFloat(ratingStr, 64)
 				m.ratingValue = rating
 				return m, nil
 			}
-		case key.Matches(msg, GlobalKeyMap.RatingHalf):
+		case key.Matches(msg, ui.GlobalKeyMap.RatingHalf):
 			if m.focused == rating {
 				// add 0.5 to current rating if it's a whole number
 				if m.ratingValue == float64(int(m.ratingValue)) && m.ratingValue < 5 {
@@ -434,10 +437,10 @@ func (m FormModel) Update(msg tea.Msg) (FormModel, tea.Cmd) {
 	// check if URL and auto-fill metadata - regardless of vim mode
 	if m.focused == url && len(m.inputs) > url {
 		currentURL := m.inputs[url].Value()
-		if currentURL != m.lastURL && isValidYouTubeURL(currentURL) {
+		if currentURL != m.lastURL && services.IsValidYouTubeURL(currentURL) {
 			m.lastURL = currentURL
 			// auto-fill metadata in background
-			cmds = append(cmds, fetchYouTubeMetadata(currentURL))
+			cmds = append(cmds, services.FetchYouTubeMetadata(currentURL))
 		}
 	}
 
@@ -450,12 +453,12 @@ func (m FormModel) View() string {
 	// clear rendered fields tracking for this render
 	m.renderedFields = make(map[int]bool)
 
-	s.WriteString(headerStyle.Render(m.title))
+	s.WriteString(ui.HeaderStyle.Render(m.title))
 
 	// show vim mode status if vim is enabled
 	if Settings.VimMotions {
 		modeStr := strings.ToUpper(m.vimMode)
-		s.WriteString(modeStyle.Render(modeStr))
+		s.WriteString(ui.ModeStyle.Render(modeStr))
 	}
 
 	s.WriteString("\n\n")
@@ -505,9 +508,9 @@ func (m FormModel) View() string {
 
 	// save button
 	if m.focused == len(m.inputs) {
-		s.WriteString(buttonStyleFocused.Render(m.buttonText))
+		s.WriteString(ui.ButtonStyleFocused.Render(m.buttonText))
 	} else {
-		s.WriteString(buttonStyle.Render(m.buttonText))
+		s.WriteString(ui.ButtonStyle.Render(m.buttonText))
 	}
 
 	if m.fieldErrors[button] != "" {
@@ -529,9 +532,9 @@ func (m FormModel) renderRatingStars(focused bool) string {
 		starValue := float64(i)
 		var star string
 		if m.ratingValue >= starValue {
-			star = starStyle.Render("★") // filled star
+			star = ui.StarStyle.Render("★") // filled star
 		} else if m.ratingValue >= starValue-0.5 {
-			star = starStyle.Render("⯨") // half star
+			star = ui.StarStyle.Render("⯨") // half star
 		} else {
 			star = "☆" // empty star
 		}
@@ -555,9 +558,9 @@ func (m FormModel) renderRatingStars(focused bool) string {
 
 	var styledRating string
 	if focused {
-		styledRating = formFieldFocusedStyle.Render(s.String())
+		styledRating = ui.FormFieldFocusedStyle.Render(s.String())
 	} else {
-		styledRating = formFieldStyle.Render(s.String())
+		styledRating = ui.FormFieldStyle.Render(s.String())
 	}
 	return styledRating
 }
@@ -641,7 +644,7 @@ func (m *FormModel) validateFieldByIndex(index int) string {
 			errorMsg = "invalid datetime"
 		}
 	case FormFieldURL:
-		if !isValidYouTubeURL(value) {
+		if !services.IsValidYouTubeURL(value) {
 			errorMsg = "invalid youtube url"
 		}
 	}
@@ -665,7 +668,7 @@ func isValidDateHour(dateStr string) bool {
 	}
 
 	// try to parse the date to ensure it's actually valid
-	_, err := time.Parse(DateTimeFormat, dateStr)
+	_, err := time.Parse(models.DateTimeFormat, dateStr)
 	return err == nil
 }
 
@@ -682,7 +685,7 @@ func isValidDate(dateStr string) bool {
 	}
 
 	// try to parse the date to ensure it's actually valid
-	_, err := time.Parse(ISODateFormat, dateStr)
+	_, err := time.Parse(models.ISODateFormat, dateStr)
 	return err == nil
 }
 
@@ -754,17 +757,17 @@ func (m FormModel) renderField(i int) string {
 			checkbox = "   "
 		}
 		if m.focused == i {
-			checkbox = formFieldFocusedStyle.Render(checkbox)
+			checkbox = ui.FormFieldFocusedStyle.Render(checkbox)
 		} else {
-			checkbox = formFieldStyle.Render(checkbox)
+			checkbox = ui.FormFieldStyle.Render(checkbox)
 		}
 		s.WriteString(checkbox)
 	default:
 		var styledInput string
 		if m.focused == i {
-			styledInput = formFieldFocusedStyle.Render(m.inputs[i].View())
+			styledInput = ui.FormFieldFocusedStyle.Render(m.inputs[i].View())
 		} else {
-			styledInput = formFieldStyle.Render(m.inputs[i].View())
+			styledInput = ui.FormFieldStyle.Render(m.inputs[i].View())
 		}
 		s.WriteString(styledInput)
 	}
@@ -775,4 +778,17 @@ func (m FormModel) renderField(i int) string {
 	}
 
 	return s.String()
+}
+
+func CreateVideoFromForm(form FormModel) models.Video {
+	return models.CreateVideo(
+		form.GetValue(url),
+		form.GetValue(title),
+		form.GetValue(channel),
+		form.GetValue(release),
+		form.GetValue(logDate),
+		form.GetValue(review),
+		form.GetValue(rewatch) == "true",
+		form.GetRating(),
+	)
 }
