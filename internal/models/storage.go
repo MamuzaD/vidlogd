@@ -1,4 +1,4 @@
-package main
+package models
 
 import (
 	"crypto/rand"
@@ -10,8 +10,8 @@ import (
 	"time"
 )
 
-// sortVideosByLogDate sorts videos by log date, most recent first
-func sortVideosByLogDate(videos []Video) {
+// SortVideosByLogDate sorts videos by log date, most recent first
+func SortVideosByLogDate(videos []Video) {
 	sort.Slice(videos, func(i, j int) bool {
 		// parse log dates for comparison
 		dateI, errI := time.Parse(DateTimeFormat, videos[i].LogDate)
@@ -27,7 +27,7 @@ func sortVideosByLogDate(videos []Video) {
 	})
 }
 
-func loadVideos() ([]Video, error) {
+func LoadVideos() ([]Video, error) {
 	videosPath, err := getVideosFilePath()
 	if err != nil {
 		return nil, fmt.Errorf("failed to get videos file path: %w", err)
@@ -54,7 +54,7 @@ func loadVideos() ([]Video, error) {
 	}
 
 	// sort videos by log date, most recent first
-	sortVideosByLogDate(videos)
+	SortVideosByLogDate(videos)
 
 	return videos, nil
 }
@@ -65,8 +65,8 @@ func generateVideoID() string {
 	return hex.EncodeToString(bytes)
 }
 
-func saveVideo(video Video) error {
-	videos, err := loadVideos()
+func SaveVideo(video Video) error {
+	videos, err := LoadVideos()
 	if err != nil {
 		return fmt.Errorf("failed to load existing videos: %w", err)
 	}
@@ -79,7 +79,7 @@ func saveVideo(video Video) error {
 	videos = append(videos, video)
 
 	// sort videos by log date, most recent first
-	sortVideosByLogDate(videos)
+	SortVideosByLogDate(videos)
 
 	// marshal for pretty json
 	data, err := json.MarshalIndent(videos, "", "  ")
@@ -99,13 +99,13 @@ func saveVideo(video Video) error {
 	return nil
 }
 
-func updateVideo(updatedVideo Video) error {
-	videos, err := loadVideos()
+func UpdateVideo(updatedVideo Video) error {
+	videos, err := LoadVideos()
 	if err != nil {
 		return fmt.Errorf("failed to load existing videos: %w", err)
 	}
 
-	existingVideo, err := findVideoByID(updatedVideo.ID)
+	existingVideo, err := FindVideoByID(updatedVideo.ID)
 	if err != nil {
 		return err
 	}
@@ -120,7 +120,7 @@ func updateVideo(updatedVideo Video) error {
 	}
 
 	// sort videos by log date, most recent first
-	sortVideosByLogDate(videos)
+	SortVideosByLogDate(videos)
 
 	// marshal for pretty json
 	data, err := json.MarshalIndent(videos, "", "  ")
@@ -140,22 +140,24 @@ func updateVideo(updatedVideo Video) error {
 	return nil
 }
 
-// helper for saving for forms
-func createVideoFromForm(form FormModel) Video {
+// CreateVideo creates a new video with the given data
+func CreateVideo(url, title, channel, releaseDate, logDate, review string, rewatched bool, rating float64) Video {
 	return Video{
-		URL:         form.GetValue(url),
-		Title:       form.GetValue(title),
-		Channel:     form.GetValue(channel),
-		ReleaseDate: form.GetValue(release),
-		LogDate:     form.GetValue(logDate),
-		Review:      form.GetValue(review),
-		Rewatched:   form.GetValue(rewatch) == "true",
-		Rating:      form.GetRating(),
+		ID:          generateVideoID(),
+		URL:         url,
+		Title:       title,
+		Channel:     channel,
+		ReleaseDate: releaseDate,
+		LogDate:     logDate,
+		Review:      review,
+		Rewatched:   rewatched,
+		Rating:      rating,
+		CreatedAt:   time.Now(),
 	}
 }
 
-func findVideoByID(id string) (*Video, error) {
-	videos, err := loadVideos()
+func FindVideoByID(id string) (*Video, error) {
+	videos, err := LoadVideos()
 	if err != nil {
 		return nil, err
 	}
@@ -169,8 +171,8 @@ func findVideoByID(id string) (*Video, error) {
 	return nil, fmt.Errorf("video with ID %s not found", id)
 }
 
-func deleteVideo(id string) error {
-	videos, err := loadVideos()
+func DeleteVideo(id string) error {
+	videos, err := LoadVideos()
 	if err != nil {
 		return fmt.Errorf("failed to load existing videos: %w", err)
 	}
@@ -209,35 +211,35 @@ func deleteVideo(id string) error {
 }
 
 // ============================= settings =============================
-func loadSettings() AppSettings {
+func LoadSettings() AppSettings {
 	settingsPath, err := getSettingsFilePath()
 	if err != nil {
 		// error getting settings path, return defaults
-		return getDefaultSettings()
+		return GetDefaultSettings()
 	}
 
 	if _, err := os.Stat(settingsPath); os.IsNotExist(err) {
 		// file doesn't exist, create w/ default
-		defaults := getDefaultSettings()
-		saveSettings(defaults)
+		defaults := GetDefaultSettings()
+		SaveSettings(defaults)
 		return defaults
 	}
 
 	data, err := os.ReadFile(settingsPath)
 	if err != nil {
-		return getDefaultSettings()
+		return GetDefaultSettings()
 	}
 
 	var settings AppSettings
 	if err := json.Unmarshal(data, &settings); err != nil {
-		return getDefaultSettings()
+		return GetDefaultSettings()
 	}
 
 	return settings
 }
 
 // save settings to file
-func saveSettings(settings AppSettings) error {
+func SaveSettings(settings AppSettings) error {
 	if err := ensureSettingsDir(); err != nil {
 		return err
 	}

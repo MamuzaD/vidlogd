@@ -1,7 +1,9 @@
-package main
+package views
 
 import (
 	tea "github.com/charmbracelet/bubbletea"
+	"github.com/mamuzad/vidlogd/internal/models"
+	"github.com/mamuzad/vidlogd/internal/services"
 )
 
 type LogVideoModel struct {
@@ -11,11 +13,11 @@ type LogVideoModel struct {
 
 func NewLogVideoModel(videoID string) LogVideoModel {
 	editing := videoID != ""
-	var existingVideo *Video
+	var existingVideo *models.Video
 
 	// load existing video if editing
 	if editing {
-		if video, err := findVideoByID(videoID); err == nil {
+		if video, err := models.FindVideoByID(videoID); err == nil {
 			existingVideo = video
 		}
 	}
@@ -27,34 +29,34 @@ func NewLogVideoModel(videoID string) LogVideoModel {
 			if editing {
 				// update existing video
 				if existingVideo != nil {
-					video := createVideoFromForm(f)
+					video := CreateVideoFromForm(f)
 					video.ID = existingVideo.ID // preserve the original ID
 
-					if err := updateVideo(video); err != nil {
+					if err := models.UpdateVideo(video); err != nil {
 						// TODO: add errors ui
 					}
 				}
-				return func() tea.Msg { return NavigateMsg{View: LogListView} }
+				return func() tea.Msg { return models.NavigateMsg{View: models.LogListView} }
 			} else {
 				// create new video
-				video := createVideoFromForm(f)
-				if err := saveVideo(video); err != nil {
+				video := CreateVideoFromForm(f)
+				if err := models.SaveVideo(video); err != nil {
 					// TODO: add errors ui
 				}
 				// clear form by sending clear message then navigate
 				return tea.Batch(
-					func() tea.Msg { return ClearFormMsg{} },
-					func() tea.Msg { return NavigateMsg{View: MainMenuView} },
+					func() tea.Msg { return models.ClearFormMsg{} },
+					func() tea.Msg { return models.NavigateMsg{View: models.MainMenuView} },
 				)
 			}
 		},
 		func() tea.Cmd {
 			if editing {
 				// when editing, cancel without saving (reset)
-				return func() tea.Msg { return NavigateMsg{View: LogListView} }
+				return func() tea.Msg { return models.NavigateMsg{View: models.LogListView} }
 			} else {
 				// when creating new, preserve form state and go back to main menu
-				return func() tea.Msg { return NavigateMsg{View: MainMenuView} }
+				return func() tea.Msg { return models.NavigateMsg{View: models.MainMenuView} }
 			}
 		},
 	)
@@ -70,7 +72,7 @@ func (m LogVideoModel) Update(msg tea.Msg) (LogVideoModel, tea.Cmd) {
 	var cmd tea.Cmd
 
 	switch msg := msg.(type) {
-	case MetadataFetchedMsg:
+	case services.MetadataFetchedMsg:
 		m.form, cmd = m.form.Update(msg)
 		return m, cmd
 	default:

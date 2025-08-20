@@ -1,4 +1,4 @@
-package main
+package views
 
 import (
 	"fmt"
@@ -9,6 +9,8 @@ import (
 	"github.com/charmbracelet/bubbles/key"
 	"github.com/charmbracelet/bubbles/list"
 	tea "github.com/charmbracelet/bubbletea"
+	"github.com/mamuzad/vidlogd/internal/models"
+	"github.com/mamuzad/vidlogd/internal/ui"
 )
 
 // necessary for list
@@ -29,9 +31,9 @@ func (d ActionItemDelegate) Render(w io.Writer, m list.Model, index int, listIte
 		return
 	}
 
-	style := menuItemStyle
+	style := ui.MenuItemStyle
 	if index == m.Index() {
-		style = style.Background(primaryColor).Foreground(white)
+		style = style.Background(ui.PrimaryColor).Foreground(ui.White)
 	}
 
 	styledText := style.Render(i.title)
@@ -42,44 +44,44 @@ type LogDetailsKeyMap struct{}
 
 func (k LogDetailsKeyMap) ShortHelp() []key.Binding {
 	return []key.Binding{
-		GlobalKeyMap.Up,
-		GlobalKeyMap.Down,
-		GlobalKeyMap.Select,
-		GlobalKeyMap.Edit,
-		GlobalKeyMap.Delete,
-		GlobalKeyMap.Back,
-		GlobalKeyMap.Help,
+		ui.GlobalKeyMap.Up,
+		ui.GlobalKeyMap.Down,
+		ui.GlobalKeyMap.Select,
+		ui.GlobalKeyMap.Edit,
+		ui.GlobalKeyMap.Delete,
+		ui.GlobalKeyMap.Back,
+		ui.GlobalKeyMap.Help,
 	}
 }
 
 func (k LogDetailsKeyMap) FullHelp() [][]key.Binding {
 	return [][]key.Binding{
 		{
-			GlobalKeyMap.Up,
-			GlobalKeyMap.Down,
-			GlobalKeyMap.Select,
+			ui.GlobalKeyMap.Up,
+			ui.GlobalKeyMap.Down,
+			ui.GlobalKeyMap.Select,
 		},
 		{
-			GlobalKeyMap.Edit,
-			GlobalKeyMap.Delete,
-			GlobalKeyMap.Back,
+			ui.GlobalKeyMap.Edit,
+			ui.GlobalKeyMap.Delete,
+			ui.GlobalKeyMap.Back,
 		},
 		{
-			GlobalKeyMap.Exit,
-			GlobalKeyMap.Help,
+			ui.GlobalKeyMap.Exit,
+			ui.GlobalKeyMap.Help,
 		},
 	}
 }
 
 type LogDetailsModel struct {
-	video       *Video
+	video       *models.Video
 	actionsList list.Model
 	help        help.Model
 }
 
 func NewLogDetailsModel(videoID string) LogDetailsModel {
-	var video *Video
-	if foundVideo, err := findVideoByID(videoID); err == nil {
+	var video *models.Video
+	if foundVideo, err := models.FindVideoByID(videoID); err == nil {
 		video = foundVideo
 	}
 
@@ -116,27 +118,27 @@ func (m LogDetailsModel) Update(msg tea.Msg) (LogDetailsModel, tea.Cmd) {
 	switch msg := msg.(type) {
 	case tea.KeyMsg:
 		switch {
-		case key.Matches(msg, GlobalKeyMap.Help):
+		case key.Matches(msg, ui.GlobalKeyMap.Help):
 			m.help.ShowAll = !m.help.ShowAll
 			return m, nil
-		case key.Matches(msg, GlobalKeyMap.Edit): // quick edit shortcut
+		case key.Matches(msg, ui.GlobalKeyMap.Edit): // quick edit shortcut
 			if m.video != nil {
 				return m, func() tea.Msg {
-					return NavigateMsg{
-						View:    LogVideoView,
+					return models.NavigateMsg{
+						View:    models.LogVideoView,
 						VideoID: m.video.ID,
 					}
 				}
 			}
-		case key.Matches(msg, GlobalKeyMap.Delete): // quick delete shortcut
+		case key.Matches(msg, ui.GlobalKeyMap.Delete): // quick delete shortcut
 			if m.video != nil {
-				if err := deleteVideo(m.video.ID); err == nil {
+				if err := models.DeleteVideo(m.video.ID); err == nil {
 					return m, func() tea.Msg {
-						return NavigateMsg{View: LogListView}
+						return models.NavigateMsg{View: models.LogListView}
 					}
 				}
 			}
-		case key.Matches(msg, GlobalKeyMap.Select):
+		case key.Matches(msg, ui.GlobalKeyMap.Select):
 			selectedItem, ok := m.actionsList.SelectedItem().(ActionItem)
 			if !ok {
 				return m, nil
@@ -146,28 +148,28 @@ func (m LogDetailsModel) Update(msg tea.Msg) (LogDetailsModel, tea.Cmd) {
 			case "edit":
 				if m.video != nil {
 					return m, func() tea.Msg {
-						return NavigateMsg{
-							View:    LogVideoView,
+						return models.NavigateMsg{
+							View:    models.LogVideoView,
 							VideoID: m.video.ID,
 						}
 					}
 				}
 			case "delete":
 				if m.video != nil {
-					if err := deleteVideo(m.video.ID); err == nil {
+					if err := models.DeleteVideo(m.video.ID); err == nil {
 						return m, func() tea.Msg {
-							return NavigateMsg{View: LogListView}
+							return models.NavigateMsg{View: models.LogListView}
 						}
 					}
 				}
 			case "back":
 				return m, func() tea.Msg {
-					return NavigateMsg{View: LogListView}
+					return models.NavigateMsg{View: models.LogListView}
 				}
 			}
-		case key.Matches(msg, GlobalKeyMap.Back):
+		case key.Matches(msg, ui.GlobalKeyMap.Back):
 			return m, func() tea.Msg {
-				return NavigateMsg{View: LogListView}
+				return models.NavigateMsg{View: models.LogListView}
 			}
 		}
 	}
@@ -200,7 +202,7 @@ func (m LogDetailsModel) View() string {
 
 	var s strings.Builder
 
-	s.WriteString(headerStyle.Render("log details") + "\n\n")
+	s.WriteString(ui.HeaderStyle.Render("log details") + "\n\n")
 
 	// video info
 	s.WriteString("Title: " + m.video.Title + "\n\n")
@@ -224,10 +226,10 @@ func (m LogDetailsModel) View() string {
 
 	if m.video.Review != "" {
 		s.WriteString("Review:" + "\n")
-		s.WriteString(reviewStyle.Render(m.video.Review) + "\n\n")
+		s.WriteString(ui.ReviewStyle.Render(m.video.Review) + "\n\n")
 	} else {
 		s.WriteString("Review:" + "\n")
-		s.WriteString(reviewStyle.Render("no review") + "\n\n")
+		s.WriteString(ui.ReviewStyle.Render("no review") + "\n\n")
 	}
 
 	s.WriteString("actions" + "\n\n")

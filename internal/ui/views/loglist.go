@@ -1,4 +1,4 @@
-package main
+package views
 
 import (
 	"strings"
@@ -8,6 +8,8 @@ import (
 	"github.com/charmbracelet/bubbles/table"
 	"github.com/charmbracelet/bubbles/textinput"
 	tea "github.com/charmbracelet/bubbletea"
+	"github.com/mamuzad/vidlogd/internal/models"
+	"github.com/mamuzad/vidlogd/internal/ui"
 	"github.com/sahilm/fuzzy"
 )
 
@@ -15,43 +17,43 @@ type LogListKeyMap struct{}
 
 func (k LogListKeyMap) ShortHelp() []key.Binding {
 	return []key.Binding{
-		GlobalKeyMap.Up,
-		GlobalKeyMap.Down,
-		GlobalKeyMap.Select,
-		GlobalKeyMap.Edit,
-		GlobalKeyMap.Delete,
-		GlobalKeyMap.Back,
-		GlobalKeyMap.Search,
-		GlobalKeyMap.Help,
+		ui.GlobalKeyMap.Up,
+		ui.GlobalKeyMap.Down,
+		ui.GlobalKeyMap.Select,
+		ui.GlobalKeyMap.Edit,
+		ui.GlobalKeyMap.Delete,
+		ui.GlobalKeyMap.Back,
+		ui.GlobalKeyMap.Search,
+		ui.GlobalKeyMap.Help,
 	}
 }
 
 func (k LogListKeyMap) FullHelp() [][]key.Binding {
 	return [][]key.Binding{
 		{
-			GlobalKeyMap.Up,
-			GlobalKeyMap.Down,
-			GlobalKeyMap.Select,
+			ui.GlobalKeyMap.Up,
+			ui.GlobalKeyMap.Down,
+			ui.GlobalKeyMap.Select,
 		},
 		{
-			GlobalKeyMap.Edit,
-			GlobalKeyMap.Delete,
-			GlobalKeyMap.Back,
+			ui.GlobalKeyMap.Edit,
+			ui.GlobalKeyMap.Delete,
+			ui.GlobalKeyMap.Back,
 		},
 		{
-			GlobalKeyMap.Exit,
-			GlobalKeyMap.Search,
-			GlobalKeyMap.Help,
+			ui.GlobalKeyMap.Exit,
+			ui.GlobalKeyMap.Search,
+			ui.GlobalKeyMap.Help,
 		},
 	}
 }
 
 type LogListModel struct {
 	table      table.Model
-	videos     []Video
+	videos     []models.Video
 	help       help.Model
 	search     textinput.Model
-	filtered   []Video
+	filtered   []models.Video
 	isFiltered bool
 	focused    bool
 }
@@ -71,8 +73,8 @@ func NewLogListModel() LogListModel {
 	)
 
 	s := table.DefaultStyles()
-	s.Header = tableHeaderStyle
-	s.Selected = tableSelectedRowStyle
+	s.Header = ui.TableHeaderStyle
+	s.Selected = ui.TableSelectedRowStyle
 
 	t.SetStyles(s)
 
@@ -89,7 +91,7 @@ func NewLogListModel() LogListModel {
 		table:      t,
 		help:       h,
 		search:     search,
-		filtered:   []Video{},
+		filtered:   []models.Video{},
 		isFiltered: false,
 		focused:    false,
 	}
@@ -97,7 +99,7 @@ func NewLogListModel() LogListModel {
 
 func (m LogListModel) Init() tea.Cmd {
 	return func() tea.Msg {
-		videos, err := loadVideos()
+		videos, err := models.LoadVideos()
 		if err != nil {
 			return err
 		}
@@ -106,7 +108,7 @@ func (m LogListModel) Init() tea.Cmd {
 }
 
 type LoadVideosMsg struct {
-	videos []Video
+	videos []models.Video
 }
 
 func (m *LogListModel) filterVideos() {
@@ -123,7 +125,7 @@ func (m *LogListModel) filterVideos() {
 	}
 
 	matches := fuzzy.Find(m.search.Value(), searchable)
-	m.filtered = make([]Video, len(matches))
+	m.filtered = make([]models.Video, len(matches))
 	for i, match := range matches {
 		m.filtered[i] = m.videos[match.Index]
 	}
@@ -141,10 +143,10 @@ func (m LogListModel) Update(msg tea.Msg) (LogListModel, tea.Cmd) {
 		return m, nil
 	case tea.KeyMsg:
 		switch {
-		case key.Matches(msg, GlobalKeyMap.Help):
+		case key.Matches(msg, ui.GlobalKeyMap.Help):
 			m.help.ShowAll = !m.help.ShowAll
 			return m, nil
-		case key.Matches(msg, GlobalKeyMap.Search), (m.focused && key.Matches(msg, GlobalKeyMap.SearchBack)):
+		case key.Matches(msg, ui.GlobalKeyMap.Search), (m.focused && key.Matches(msg, ui.GlobalKeyMap.SearchBack)):
 			if m.focused {
 				m.focused = false
 				m.search.Blur()
@@ -162,32 +164,32 @@ func (m LogListModel) Update(msg tea.Msg) (LogListModel, tea.Cmd) {
 			m.filterVideos()
 			m.updateTableRows()
 			return m, searchCmd
-		case key.Matches(msg, GlobalKeyMap.Edit): // quick edit shortcut
+		case key.Matches(msg, ui.GlobalKeyMap.Edit): // quick edit shortcut
 			if len(m.videos) > 0 {
 				selectedRow := m.table.Cursor()
 				if selectedRow < len(m.videos) {
 					videoToEdit := m.videos[selectedRow]
 					return m, func() tea.Msg {
-						return NavigateMsg{
-							View:    LogVideoView,
+						return models.NavigateMsg{
+							View:    models.LogVideoView,
 							VideoID: videoToEdit.ID,
 						}
 					}
 				}
 			}
 			return m, nil
-		case key.Matches(msg, GlobalKeyMap.Delete): // quick delete shortcut
+		case key.Matches(msg, ui.GlobalKeyMap.Delete): // quick delete shortcut
 			if len(m.videos) > 0 {
 				selectedRow := m.table.Cursor()
 				if selectedRow < len(m.videos) {
 					videoToDelete := m.videos[selectedRow]
 					return m, func() tea.Msg {
-						err := deleteVideo(videoToDelete.ID)
+						err := models.DeleteVideo(videoToDelete.ID)
 						if err != nil {
 							return err
 						}
 						// reload videos after deletion
-						videos, err := loadVideos()
+						videos, err := models.LoadVideos()
 						if err != nil {
 							return err
 						}
@@ -196,7 +198,7 @@ func (m LogListModel) Update(msg tea.Msg) (LogListModel, tea.Cmd) {
 				}
 			}
 			return m, nil
-		case key.Matches(msg, GlobalKeyMap.Select):
+		case key.Matches(msg, ui.GlobalKeyMap.Select):
 			return m.handleSelection()
 		}
 	}
@@ -262,7 +264,7 @@ func (m LogListModel) handleSelection() (LogListModel, tea.Cmd) {
 	if selectedRow < len(m.videos) {
 		selectedVideo := m.videos[selectedRow]
 		return m, func() tea.Msg {
-			return NavigateMsg{View: LogDetailsView, VideoID: selectedVideo.ID}
+			return models.NavigateMsg{View: models.LogDetailsView, VideoID: selectedVideo.ID}
 		}
 	}
 	return m, nil
@@ -271,7 +273,7 @@ func (m LogListModel) handleSelection() (LogListModel, tea.Cmd) {
 func (m LogListModel) View() string {
 	var s strings.Builder
 
-	s.WriteString(headerStyle.Render("video logs") + "\n")
+	s.WriteString(ui.HeaderStyle.Render("video logs") + "\n")
 
 	if len(m.videos) == 0 {
 		s.WriteString("\t\t\tno videos logged yet\n\n")
@@ -282,15 +284,15 @@ func (m LogListModel) View() string {
 	}
 
 	// add red border when focused
-	currentSearchStyle := searchStyle
+	currentSearchStyle := ui.SearchStyle
 	if m.focused {
-		currentSearchStyle = searchStyle.BorderForeground(primaryColor)
+		currentSearchStyle = ui.SearchStyle.BorderForeground(ui.PrimaryColor)
 	}
 
 	s.WriteString("\n" + currentSearchStyle.Render(m.search.View()) + "\n")
 
 	tableContent := m.table.View()
-	styledTable := tableStyle.Render(tableContent)
+	styledTable := ui.TableStyle.Render(tableContent)
 	s.WriteString("\n" + styledTable)
 
 	// Add help at the bottom

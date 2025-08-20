@@ -1,4 +1,4 @@
-package main
+package views
 
 import (
 	"fmt"
@@ -6,6 +6,8 @@ import (
 	"time"
 
 	"github.com/charmbracelet/lipgloss"
+	"github.com/mamuzad/vidlogd/internal/models"
+	"github.com/mamuzad/vidlogd/internal/ui"
 )
 
 type ChartData struct {
@@ -23,7 +25,7 @@ func (m StatsModel) renderChart(data ChartData, isFocused bool) string {
 		Width(56)
 
 	if isFocused {
-		chartStyle = chartStyle.BorderForeground(primaryColor)
+		chartStyle = chartStyle.BorderForeground(ui.PrimaryColor)
 	}
 
 	var chart strings.Builder
@@ -117,7 +119,7 @@ func (m StatsModel) prepareMonthlyChartData(monthStats []MonthStats) ChartData {
 	now := time.Now()
 	for i := range 9 {
 		monthTime := now.AddDate(0, -i, 0)
-		monthKey := monthTime.Format(MonthFormat)
+		monthKey := monthTime.Format(models.MonthFormat)
 		continuousMonths = append([]string{monthKey}, continuousMonths...)
 	}
 

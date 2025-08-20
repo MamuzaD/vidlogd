@@ -1,4 +1,4 @@
-package main
+package services
 
 import (
 	"encoding/json"
@@ -12,6 +12,7 @@ import (
 
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/joho/godotenv"
+	"github.com/mamuzad/vidlogd/internal/models"
 )
 
 type YouTubeMetadata struct {
@@ -47,14 +48,16 @@ func loadYouTubeAPI() {
 
 	// if not found in environment, try settings
 	if youtubeAPIKey == "" {
-		youtubeAPIKey = Settings.APIKey
+		settings := models.LoadSettings()
+		youtubeAPIKey = settings.APIKey
 	}
 }
 
 func getYouTubeAPIKey() string {
 	// use latest settings
-	if Settings.APIKey != "" {
-		return Settings.APIKey
+	settings := models.LoadSettings()
+	if settings.APIKey != "" {
+		return settings.APIKey
 	}
 
 	// fallback to env
@@ -64,7 +67,7 @@ func getYouTubeAPIKey() string {
 	return youtubeAPIKey
 }
 
-func isValidYouTubeURL(urlStr string) bool {
+func IsValidYouTubeURL(urlStr string) bool {
 	if urlStr == "" {
 		return false
 	}
@@ -120,7 +123,7 @@ func extractVideoID(urlStr string) string {
 // fetch youtube metadata and parse it
 //
 // returns MetadataFetchedMsg containing the Metadata (video title, channel, release date)
-func fetchYouTubeMetadata(urlStr string) tea.Cmd {
+func FetchYouTubeMetadata(urlStr string) tea.Cmd {
 	return func() tea.Msg {
 		youtubeAPIKey := getYouTubeAPIKey()
 
@@ -128,7 +131,7 @@ func fetchYouTubeMetadata(urlStr string) tea.Cmd {
 			return MetadataFetchedMsg{Error: "add YOUTUBE_API_KEY to your .env file or set it in settings"}
 		}
 
-		if !isValidYouTubeURL(urlStr) {
+		if !IsValidYouTubeURL(urlStr) {
 			return MetadataFetchedMsg{Error: "invalid YouTube URL"}
 		}
 
@@ -177,7 +180,7 @@ func fetchYouTubeMetadata(urlStr string) tea.Cmd {
 		publishedDate := ""
 		if snippet.PublishedAt != "" {
 			if t, err := time.Parse(time.RFC3339, snippet.PublishedAt); err == nil {
-				publishedDate = t.Format(ISODateFormat)
+				publishedDate = t.Format(models.ISODateFormat)
 			}
 		}
 
@@ -190,3 +193,4 @@ func fetchYouTubeMetadata(urlStr string) tea.Cmd {
 		return MetadataFetchedMsg{Metadata: metadata}
 	}
 }
+

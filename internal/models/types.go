@@ -1,8 +1,17 @@
-package main
+package models
 
 import "time"
 
 type ViewType int
+
+const (
+	MainMenuView ViewType = iota
+	LogVideoView
+	LogListView
+	LogDetailsView
+	SettingsView
+	StatsView
+)
 
 type NavigateMsg struct {
 	View    ViewType
@@ -35,3 +44,12 @@ var (
 	MonthFormat    string = "01/06"
 	DateTimeFormat string = "2006-01-02 3:04 PM"
 )
+
+// @TODO :: need to reorganize
+func GetDefaultSettings() AppSettings {
+	return AppSettings{
+		VimMotions: true,
+		Theme:      "red",
+		APIKey:     "",
+	}
+}

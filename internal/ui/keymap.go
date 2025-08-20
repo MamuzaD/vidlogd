@@ -1,6 +1,9 @@
-package main
+package ui
 
-import "github.com/charmbracelet/bubbles/key"
+import (
+	"github.com/charmbracelet/bubbles/key"
+	"github.com/mamuzad/vidlogd/internal/models"
+)
 
 // Global keymap instance
 var GlobalKeyMap KeyMap
@@ -13,7 +16,8 @@ func InitKeyMap() {
 
 // Update keymap based on current VimMotions setting
 func UpdateKeyMap() {
-	GlobalKeyMap = NewKeyMap(Settings.VimMotions)
+	settings := models.LoadSettings()
+	GlobalKeyMap = NewKeyMap(settings.VimMotions)
 }
 
 type KeyMap struct {
