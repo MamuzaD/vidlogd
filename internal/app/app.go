@@ -2,6 +2,7 @@ package app
 
 import (
 	"fmt"
+	"reflect"
 
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
@@ -11,7 +12,9 @@ import (
 )
 
 type Model struct {
-	currentView models.ViewType
+	currentView  models.ViewType
+	currentRoute models.Route
+	history      []models.Route
 
 	mainMenu   views.MainMenuModel
 	logVideo   views.LogVideoModel
@@ -29,6 +32,68 @@ func (m Model) Init() tea.Cmd {
 	return tea.SetWindowTitle("vidlogd")
 }
 
+func routeEqual(a, b models.Route) bool {
+	if a.View != b.View {
+		return false
+	}
+	// state can hold non-comparable values
+	return reflect.DeepEqual(a.State, b.State)
+}
+
+func (m Model) applyRoute(r models.Route) (Model, tea.Cmd) {
+	m.currentRoute = r
+	m.currentView = r.View
+
+	switch r.View {
+	case models.LogListView:
+		m.logList = views.NewLogListModel()
+		return m, m.logList.Init()
+	case models.LogVideoView:
+		// no state meaning preserve existing "new video" form state
+		if r.State != nil {
+			if st, ok := r.State.(models.VideoRouteState); ok && st.VideoID != "" {
+				m.logVideo = views.NewLogVideoModel(st.VideoID)
+			}
+		}
+		return m, m.logVideo.Init()
+	case models.LogDetailsView:
+		videoID := ""
+		if st, ok := r.State.(models.VideoRouteState); ok {
+			videoID = st.VideoID
+		}
+		m.logDetails = views.NewLogDetailsModel(videoID)
+		return m, m.logDetails.Init()
+	case models.SettingsView:
+		m.settings = views.NewSettingsModel()
+		return m, m.settings.Init()
+	case models.StatsView:
+		m.stats = views.NewStatsModel()
+		return m, m.stats.Init()
+	default:
+		return m, nil
+	}
+}
+
+func (m Model) navigateTo(r models.Route) (Model, tea.Cmd) {
+	// only push if diff
+	if routeEqual(m.currentRoute, r) {
+		return m, nil
+	}
+	m.history = append(m.history, m.currentRoute)
+	return m.applyRoute(r)
+}
+
+func (m Model) back() (Model, tea.Cmd) {
+	if len(m.history) == 0 {
+		return m.applyRoute(models.Route{View: models.MainMenuView})
+	}
+
+	last := len(m.history) - 1
+	prev := m.history[last]
+	m.history = m.history[:last]
+	return m.applyRoute(prev)
+}
+
 func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	var cmd tea.Cmd
 
@@ -44,8 +109,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return m, tea.Quit
 		case "q":
 			if m.currentView != models.MainMenuView {
-				m.currentView = models.MainMenuView
-				return m, nil
+				return m.back()
 			}
 		}
 
@@ -54,34 +118,11 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.logVideo = views.NewLogVideoModel("")
 		return m, nil
 
-	case models.NavigateMsg:
-		m.currentView = msg.View
-		if msg.View == models.LogListView {
-			m.logList = views.NewLogListModel()
-			return m, m.logList.Init()
-		}
-		if msg.View == models.LogVideoView {
-			if msg.VideoID == "" {
-				// preserve existing new video form state
-			} else {
-				m.logVideo = views.NewLogVideoModel(msg.VideoID)
-			}
-			return m, m.logVideo.Init()
-		}
-		if msg.View == models.LogDetailsView {
-			m.logDetails = views.NewLogDetailsModel(msg.VideoID)
-			return m, m.logDetails.Init()
-		}
-		if msg.View == models.SettingsView {
-			m.settings = views.NewSettingsModel()
-			return m, m.settings.Init()
-		}
-		if msg.View == models.StatsView {
-			m.stats = views.NewStatsModel()
-			return m, m.stats.Init()
-		}
+	case models.BackMsg:
+		return m.back()
 
-		return m, nil
+	case models.NavigateMsg:
+		return m.navigateTo(models.Route(msg))
 	}
 
 	switch m.currentView {
@@ -137,10 +178,14 @@ func Run() error {
 
 	m := Model{
 		currentView: models.MainMenuView,
-		mainMenu:    views.NewMainMenuModel(),
-		logVideo:    views.NewLogVideoModel(""),
-		settings:    views.NewSettingsModel(),
-		stats:       views.NewStatsModel(),
+		currentRoute: models.Route{
+			View: models.MainMenuView,
+		},
+		history:  []models.Route{},
+		mainMenu: views.NewMainMenuModel(),
+		logVideo: views.NewLogVideoModel(""),
+		settings: views.NewSettingsModel(),
+		stats:    views.NewStatsModel(),
 	}
 
 	p := tea.NewProgram(m, tea.WithAltScreen())

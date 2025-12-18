@@ -125,8 +125,8 @@ func (m LogDetailsModel) Update(msg tea.Msg) (LogDetailsModel, tea.Cmd) {
 			if m.video != nil {
 				return m, func() tea.Msg {
 					return models.NavigateMsg{
-						View:    models.LogVideoView,
-						VideoID: m.video.ID,
+						View:  models.LogVideoView,
+						State: models.VideoRouteState{VideoID: m.video.ID},
 					}
 				}
 			}
@@ -134,7 +134,7 @@ func (m LogDetailsModel) Update(msg tea.Msg) (LogDetailsModel, tea.Cmd) {
 			if m.video != nil {
 				if err := models.DeleteVideo(m.video.ID); err == nil {
 					return m, func() tea.Msg {
-						return models.NavigateMsg{View: models.LogListView}
+						return models.BackMsg{}
 					}
 				}
 			}
@@ -149,8 +149,8 @@ func (m LogDetailsModel) Update(msg tea.Msg) (LogDetailsModel, tea.Cmd) {
 				if m.video != nil {
 					return m, func() tea.Msg {
 						return models.NavigateMsg{
-							View:    models.LogVideoView,
-							VideoID: m.video.ID,
+							View:  models.LogVideoView,
+							State: models.VideoRouteState{VideoID: m.video.ID},
 						}
 					}
 				}
@@ -158,18 +158,18 @@ func (m LogDetailsModel) Update(msg tea.Msg) (LogDetailsModel, tea.Cmd) {
 				if m.video != nil {
 					if err := models.DeleteVideo(m.video.ID); err == nil {
 						return m, func() tea.Msg {
-							return models.NavigateMsg{View: models.LogListView}
+							return models.BackMsg{}
 						}
 					}
 				}
 			case "back":
 				return m, func() tea.Msg {
-					return models.NavigateMsg{View: models.LogListView}
+					return models.BackMsg{}
 				}
 			}
 		case key.Matches(msg, ui.GlobalKeyMap.Back):
 			return m, func() tea.Msg {
-				return models.NavigateMsg{View: models.LogListView}
+				return models.BackMsg{}
 			}
 		}
 	}

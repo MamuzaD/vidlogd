@@ -149,7 +149,7 @@ func (m SettingsModel) Update(msg tea.Msg) (SettingsModel, tea.Cmd) {
 	case tea.KeyMsg:
 		if key.Matches(msg, ui.GlobalKeyMap.Back) {
 			return m, func() tea.Msg {
-				return models.NavigateMsg{View: models.MainMenuView}
+				return models.BackMsg{}
 			}
 		}
 		// let form handle select if active
