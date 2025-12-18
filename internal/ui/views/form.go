@@ -15,8 +15,8 @@ import (
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
 	"github.com/mamuzad/vidlogd/internal/models"
-	"github.com/mamuzad/vidlogd/internal/ui"
 	"github.com/mamuzad/vidlogd/internal/services"
+	"github.com/mamuzad/vidlogd/internal/ui"
 )
 
 const (
@@ -93,10 +93,12 @@ func (k FormKeyMap) FullHelp() [][]key.Binding {
 		{
 			ui.GlobalKeyMap.NextField,
 			ui.GlobalKeyMap.PrevField,
-			ui.GlobalKeyMap.Select,
 		},
 		{
+			ui.GlobalKeyMap.Select,
 			ui.GlobalKeyMap.Save,
+		},
+		{
 			ui.GlobalKeyMap.Cancel,
 			ui.GlobalKeyMap.Help,
 		},
@@ -326,11 +328,19 @@ func (m FormModel) Update(msg tea.Msg) (FormModel, tea.Cmd) {
 		case key.Matches(msg, ui.GlobalKeyMap.Help):
 			m.help.ShowAll = !m.help.ShowAll
 			return m, nil
-		case key.Matches(msg, ui.GlobalKeyMap.Exit), key.Matches(msg, ui.GlobalKeyMap.Cancel):
-			if m.onCancel != nil {
-				return m, m.onCancel()
+		case key.Matches(msg, ui.GlobalKeyMap.Back, ui.GlobalKeyMap.Cancel):
+			shouldCancel := false
+			if !Settings.VimMotions {
+				shouldCancel = key.Matches(msg, ui.GlobalKeyMap.Cancel)
+			} else {
+				shouldCancel = m.vimMode == "normal"
 			}
-			return m, nil
+			if shouldCancel {
+				if m.onCancel != nil {
+					return m, m.onCancel()
+				}
+				return m, nil
+			}
 		// vim keys
 		case key.Matches(msg, ui.GlobalKeyMap.InsertMode):
 			// only handle if vim is enabled and we're in normal mode

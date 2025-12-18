@@ -99,6 +99,8 @@ func NewLogDetailsModel(videoID string) LogDetailsModel {
 	l.SetFilteringEnabled(false)
 	l.SetShowTitle(false)
 	l.SetShowHelp(false)
+	l.KeyMap.Quit.SetKeys()
+	l.KeyMap.Quit.SetHelp("", "")
 
 	h := help.New()
 	h.ShowAll = false // start with compact help

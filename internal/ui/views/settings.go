@@ -108,6 +108,8 @@ func NewSettingsModel() SettingsModel {
 	l.SetFilteringEnabled(false)
 	l.SetShowTitle(false)
 	l.SetShowHelp(true)
+	l.KeyMap.Quit.SetKeys()
+	l.KeyMap.Quit.SetHelp("", "")
 
 	return SettingsModel{
 		list: l,
@@ -147,7 +149,7 @@ func (m SettingsModel) Update(msg tea.Msg) (SettingsModel, tea.Cmd) {
 		return m, nil
 
 	case tea.KeyMsg:
-		if key.Matches(msg, ui.GlobalKeyMap.Back) {
+		if key.Matches(msg, ui.GlobalKeyMap.Back, ui.GlobalKeyMap.Cancel) {
 			return m, func() tea.Msg {
 				return models.BackMsg{}
 			}
