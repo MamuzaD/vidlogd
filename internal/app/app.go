@@ -2,6 +2,7 @@ package app
 
 import (
 	"fmt"
+	"reflect"
 
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
@@ -31,6 +32,14 @@ func (m Model) Init() tea.Cmd {
 	return tea.SetWindowTitle("vidlogd")
 }
 
+func routeEqual(a, b models.Route) bool {
+	if a.View != b.View {
+		return false
+	}
+	// state can hold non-comparable values
+	return reflect.DeepEqual(a.State, b.State)
+}
+
 func (m Model) applyRoute(r models.Route) (Model, tea.Cmd) {
 	m.currentRoute = r
 	m.currentView = r.View
@@ -40,7 +49,7 @@ func (m Model) applyRoute(r models.Route) (Model, tea.Cmd) {
 		m.logList = views.NewLogListModel()
 		return m, m.logList.Init()
 	case models.LogVideoView:
-		// no state considered as new, otherwise ref videoId
+		// no state meaning preserve existing "new video" form state
 		if r.State != nil {
 			if st, ok := r.State.(models.VideoRouteState); ok && st.VideoID != "" {
 				m.logVideo = views.NewLogVideoModel(st.VideoID)
@@ -67,9 +76,10 @@ func (m Model) applyRoute(r models.Route) (Model, tea.Cmd) {
 
 func (m Model) navigateTo(r models.Route) (Model, tea.Cmd) {
 	// only push if diff
-	if m.currentRoute != r {
-		m.history = append(m.history, m.currentRoute)
+	if routeEqual(m.currentRoute, r) {
+		return m, nil
 	}
+	m.history = append(m.history, m.currentRoute)
 	return m.applyRoute(r)
 }
 
