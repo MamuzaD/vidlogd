@@ -557,10 +557,22 @@ func (m StatsModel) Update(msg tea.Msg) (StatsModel, tea.Cmd) {
 
 	switch msg := msg.(type) {
 	case LoadVideosMsg:
+		prevSelectedChannel := m.getSelectedChannel()
 		m.videos = msg.videos
-		m.filtered = msg.videos
+
+		// rebuild channels, then restore selection
 		m.updateChannelList()
-		m.updateVideoList()
+		if prevSelectedChannel != "" {
+			// re-select the prev
+			for i, item := range m.channelSelect.Items() {
+				if ch, ok := item.(ChannelItem); ok && ch.channel == prevSelectedChannel {
+					m.channelSelect.Select(i)
+					break
+				}
+			}
+		}
+
+		m.filterStats()
 	case tea.KeyMsg:
 		switch {
 		case key.Matches(msg, ui.GlobalKeyMap.Help):

@@ -140,7 +140,7 @@ func (m LogListModel) Update(msg tea.Msg) (LogListModel, tea.Cmd) {
 	switch msg := msg.(type) {
 	case LoadVideosMsg:
 		m.videos = msg.videos
-		m.filtered = msg.videos
+		m.filterVideos()
 		m.updateTableRows()
 		return m, nil
 	case tea.KeyMsg:

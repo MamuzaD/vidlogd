@@ -69,7 +69,7 @@ type SettingsModel struct {
 	form *FormModel // for API key editing
 }
 
-func NewSettingsModel() SettingsModel {
+func NewSettingsModel(index int) SettingsModel {
 	Settings = models.LoadSettings()
 
 	ui.UpdateKeyMap()
@@ -312,4 +312,9 @@ func renderAPIKey() (apiKey string) {
 	}
 
 	return
+}
+
+func (m SettingsModel) SelectIndex(index int) {
+	m.form = nil
+	m.list.Select(index)
 }

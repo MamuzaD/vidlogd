@@ -16,12 +16,12 @@ type Model struct {
 	currentRoute models.Route
 	history      []models.Route
 
-	mainMenu   views.MainMenuModel
-	logVideo   views.LogVideoModel
-	logList    views.LogListModel
-	logDetails views.LogDetailsModel
-	settings   views.SettingsModel
-	stats      views.StatsModel
+	mainMenu   *views.MainMenuModel
+	logVideo   *views.LogVideoModel
+	logList    *views.LogListModel
+	logDetails *views.LogDetailsModel
+	settings   *views.SettingsModel
+	stats      *views.StatsModel
 
 	// Terminal dimensions for centering
 	width  int
@@ -45,29 +45,68 @@ func (m Model) applyRoute(r models.Route) (Model, tea.Cmd) {
 	m.currentView = r.View
 
 	switch r.View {
+	case models.MainMenuView:
+		if m.mainMenu == nil {
+			mm := views.NewMainMenuModel()
+			m.mainMenu = &mm
+		}
+		return m, m.mainMenu.Init()
 	case models.LogListView:
-		m.logList = views.NewLogListModel()
+		if m.logList == nil {
+			ll := views.NewLogListModel()
+			m.logList = &ll
+		}
 		return m, m.logList.Init()
 	case models.LogVideoView:
-		// no state meaning preserve existing "new video" form state
-		if r.State != nil {
-			if st, ok := r.State.(models.VideoRouteState); ok && st.VideoID != "" {
-				m.logVideo = views.NewLogVideoModel(st.VideoID)
-			}
+		if m.logVideo == nil {
+			lv := views.NewLogVideoModel("")
+			m.logVideo = &lv
 		}
+
+		targetID := ""
+		if st, ok := r.State.(models.VideoRouteState); ok {
+			targetID = st.VideoID
+		}
+
+		// route param changes.
+		if targetID != "" && (m.logVideo == nil || m.logVideo.VideoID() != targetID) {
+			lv := views.NewLogVideoModel(targetID)
+			m.logVideo = &lv
+		}
+		// switching from editing -> new: reset
+		if targetID == "" && m.logVideo != nil && m.logVideo.VideoID() != "" {
+			lv := views.NewLogVideoModel("")
+			m.logVideo = &lv
+		}
+
 		return m, m.logVideo.Init()
 	case models.LogDetailsView:
 		videoID := ""
 		if st, ok := r.State.(models.VideoRouteState); ok {
 			videoID = st.VideoID
 		}
-		m.logDetails = views.NewLogDetailsModel(videoID)
+		if m.logDetails == nil || m.logDetails.VideoID() != videoID {
+			ld := views.NewLogDetailsModel(videoID)
+			m.logDetails = &ld
+		}
 		return m, m.logDetails.Init()
 	case models.SettingsView:
-		m.settings = views.NewSettingsModel()
+		index := 0
+		if st, ok := r.State.(models.SettingsRouteState); ok {
+			index = st.ListIndex
+		}
+		if m.settings == nil {
+			s := views.NewSettingsModel(index)
+			m.settings = &s
+		} else {
+			m.settings.SelectIndex(index)
+		}
 		return m, m.settings.Init()
 	case models.StatsView:
-		m.stats = views.NewStatsModel()
+		if m.stats == nil {
+			s := views.NewStatsModel()
+			m.stats = &s
+		}
 		return m, m.stats.Init()
 	default:
 		return m, nil
@@ -111,7 +150,12 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 	case models.ClearFormMsg:
 		// clear the form by creating a new empty one
-		m.logVideo = views.NewLogVideoModel("")
+		if m.logVideo == nil {
+			lv := views.NewLogVideoModel("")
+			m.logVideo = &lv
+		} else {
+			*m.logVideo = views.NewLogVideoModel("")
+		}
 		return m, nil
 
 	case models.BackMsg:
@@ -123,17 +167,17 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 	switch m.currentView {
 	case models.MainMenuView:
-		m.mainMenu, cmd = m.mainMenu.Update(msg)
+		cmd = updatePtr(&m.mainMenu, msg, views.NewMainMenuModel)
 	case models.LogVideoView:
-		m.logVideo, cmd = m.logVideo.Update(msg)
+		cmd = updatePtr(&m.logVideo, msg, func() views.LogVideoModel { return views.NewLogVideoModel("") })
 	case models.LogListView:
-		m.logList, cmd = m.logList.Update(msg)
+		cmd = updatePtr(&m.logList, msg, views.NewLogListModel)
 	case models.LogDetailsView:
-		m.logDetails, cmd = m.logDetails.Update(msg)
+		cmd = updatePtr(&m.logDetails, msg, func() views.LogDetailsModel { return views.NewLogDetailsModel("") })
 	case models.SettingsView:
-		m.settings, cmd = m.settings.Update(msg)
+		cmd = updatePtr(&m.settings, msg, func() views.SettingsModel { return views.NewSettingsModel(0) })
 	case models.StatsView:
-		m.stats, cmd = m.stats.Update(msg)
+		cmd = updatePtr(&m.stats, msg, views.NewStatsModel)
 	}
 
 	return m, cmd
@@ -144,17 +188,30 @@ func (m Model) View() string {
 
 	switch m.currentView {
 	case models.MainMenuView:
-		content = m.mainMenu.View()
+		if m.mainMenu != nil {
+			content = m.mainMenu.View()
+		}
 	case models.LogVideoView:
-		content = m.logVideo.View()
+		if m.logVideo != nil {
+			content = m.logVideo.View()
+		}
 	case models.LogListView:
-		content = m.logList.View()
+		if m.logList != nil {
+			content = m.logList.View()
+		}
 	case models.LogDetailsView:
-		content = m.logDetails.View()
+		if m.logDetails != nil {
+			content = m.logDetails.View()
+		}
 	case models.SettingsView:
-		content = m.settings.View()
+		if m.settings != nil {
+			content = m.settings.View()
+		}
+
 	case models.StatsView:
-		content = m.stats.View()
+		if m.stats != nil {
+			content = m.stats.View()
+		}
 	}
 
 	title := ui.CenterHorizontally(ui.TitleStyle.Render("vidlogd"), lipgloss.Width(content))
@@ -178,10 +235,10 @@ func Run() error {
 			View: models.MainMenuView,
 		},
 		history:  []models.Route{},
-		mainMenu: views.NewMainMenuModel(),
-		logVideo: views.NewLogVideoModel(""),
-		settings: views.NewSettingsModel(),
-		stats:    views.NewStatsModel(),
+		mainMenu: func() *views.MainMenuModel { mm := views.NewMainMenuModel(); return &mm }(),
+		logVideo: func() *views.LogVideoModel { lv := views.NewLogVideoModel(""); return &lv }(),
+		settings: func() *views.SettingsModel { s := views.NewSettingsModel(0); return &s }(),
+		stats:    func() *views.StatsModel { s := views.NewStatsModel(); return &s }(),
 	}
 
 	p := tea.NewProgram(m, tea.WithAltScreen())

@@ -85,6 +85,8 @@ func (m LogVideoModel) View() string {
 	return m.form.View()
 }
 
+func (m LogVideoModel) VideoID() string { return m.videoID }
+
 // UpdateVimMode updates the vim mode setting for the form
 func (m *LogVideoModel) UpdateVimMode() {
 	m.form.UpdateVimMode()

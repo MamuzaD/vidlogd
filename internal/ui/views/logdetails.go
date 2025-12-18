@@ -74,6 +74,7 @@ func (k LogDetailsKeyMap) FullHelp() [][]key.Binding {
 }
 
 type LogDetailsModel struct {
+	videoID     string
 	video       *models.Video
 	actionsList list.Model
 	help        help.Model
@@ -106,11 +107,15 @@ func NewLogDetailsModel(videoID string) LogDetailsModel {
 	h.ShowAll = false // start with compact help
 
 	return LogDetailsModel{
+		videoID:     videoID,
 		video:       video,
 		actionsList: l,
 		help:        h,
 	}
 }
+
+// VideoID returns the route parameter this model was created for.
+func (m LogDetailsModel) VideoID() string { return m.videoID }
 
 func (m LogDetailsModel) Init() tea.Cmd {
 	return nil
