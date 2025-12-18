@@ -59,6 +59,8 @@ func NewMainMenuModel() MainMenuModel {
 	l.SetFilteringEnabled(false)
 	l.SetShowTitle(false)
 	l.SetShowHelp(true)
+	l.KeyMap.Quit.SetKeys()
+	l.KeyMap.Quit.SetHelp("", "")
 
 	return MainMenuModel{
 		list: l,
@@ -76,7 +78,7 @@ func (m MainMenuModel) Update(msg tea.Msg) (MainMenuModel, tea.Cmd) {
 		return m, nil
 
 	case tea.KeyMsg:
-		if key.Matches(msg, ui.GlobalKeyMap.Exit, ui.GlobalKeyMap.Back) {
+		if key.Matches(msg, ui.GlobalKeyMap.Back) {
 			return m, tea.Quit
 		}
 		if key.Matches(msg, ui.GlobalKeyMap.Select) {

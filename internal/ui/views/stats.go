@@ -118,6 +118,8 @@ func NewStatsModel() StatsModel {
 	videoList.SetShowTitle(false)
 	videoList.SetShowHelp(false)
 	videoList.SetShowPagination(false)
+	videoList.KeyMap.Quit.SetKeys()
+	videoList.KeyMap.Quit.SetHelp("", "")
 
 	h := help.New()
 	h.ShowAll = false
@@ -305,6 +307,12 @@ func (m *StatsModel) calculateStats() (
 	}
 	// most logged first
 	sort.Slice(channelStats, func(i, j int) bool {
+		if channelStats[i].Count == channelStats[j].Count {
+			if channelStats[i].AvgRating == channelStats[j].AvgRating {
+				return channelStats[i].Channel < channelStats[j].Channel
+			}
+			return channelStats[i].AvgRating > channelStats[j].AvgRating
+		}
 		return channelStats[i].Count > channelStats[j].Count
 	})
 
@@ -565,17 +573,24 @@ func (m StatsModel) Update(msg tea.Msg) (StatsModel, tea.Cmd) {
 		case key.Matches(msg, ui.GlobalKeyMap.CycleBack):
 			next := m.cycleField(&m.focusedSearch, false, 3)
 			m.setFocus(next)
-		case key.Matches(msg, ui.GlobalKeyMap.SearchBack):
-			if m.focusedSearch > 0 {
-				m.setFocus(0)
-				m.filterStats()
-			}
 		case m.focusedSearch == 1: // title search
+
+			if key.Matches(msg, ui.GlobalKeyMap.SearchBack) {
+				if m.focusedSearch > 0 {
+					m.setFocus(0)
+					m.filterStats()
+				}
+				return m, nil
+			}
 			m.titleSearch, titleCmd = m.titleSearch.Update(msg)
 			m.filterStats()
 			m.updateVideoList()
 			return m, titleCmd
 		case m.focusedSearch == 2: // channel select
+			// allow backing out without stealing 'q' from the title search input
+			if key.Matches(msg, ui.GlobalKeyMap.Back) {
+				return m, func() tea.Msg { return models.BackMsg{} }
+			}
 			// ignore left right
 			if key.Matches(msg, ui.GlobalKeyMap.Left) || key.Matches(msg, ui.GlobalKeyMap.Right) {
 				return m, nil
@@ -586,6 +601,8 @@ func (m StatsModel) Update(msg tea.Msg) (StatsModel, tea.Cmd) {
 			return m, channelCmd
 		case m.focusedSearch == 0: // chart view
 			switch {
+			case key.Matches(msg, ui.GlobalKeyMap.Back, ui.GlobalKeyMap.Cancel):
+				return m, func() tea.Msg { return models.BackMsg{} }
 			case key.Matches(msg, ui.GlobalKeyMap.Left): // switch between chart views
 				m.viewMode = m.cycleField(&m.viewMode, false, 3)
 			case key.Matches(msg, ui.GlobalKeyMap.Right):

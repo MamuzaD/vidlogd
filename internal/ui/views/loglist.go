@@ -38,10 +38,12 @@ func (k LogListKeyMap) FullHelp() [][]key.Binding {
 		{
 			ui.GlobalKeyMap.Edit,
 			ui.GlobalKeyMap.Delete,
-			ui.GlobalKeyMap.Back,
 		},
 		{
-			ui.GlobalKeyMap.Exit,
+			ui.GlobalKeyMap.Back,
+			ui.GlobalKeyMap.Cancel,
+		},
+		{
 			ui.GlobalKeyMap.Search,
 			ui.GlobalKeyMap.Help,
 		},
@@ -158,12 +160,16 @@ func (m LogListModel) Update(msg tea.Msg) (LogListModel, tea.Cmd) {
 				m.table.Blur()
 			}
 			return m, nil
+		case key.Matches(msg, ui.GlobalKeyMap.Cancel):
+			return m, func() tea.Msg { return models.BackMsg{} }
 		case m.focused:
 			// when search is focused, only handle search input
 			m.search, searchCmd = m.search.Update(msg)
 			m.filterVideos()
 			m.updateTableRows()
 			return m, searchCmd
+		case key.Matches(msg, ui.GlobalKeyMap.Back):
+			return m, func() tea.Msg { return models.BackMsg{} }
 		case key.Matches(msg, ui.GlobalKeyMap.Edit): // quick edit shortcut
 			if len(m.videos) > 0 {
 				selectedRow := m.table.Cursor()

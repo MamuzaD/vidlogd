@@ -87,7 +87,6 @@ func NewKeyMap(useVim bool) KeyMap {
 		Edit:       key.NewBinding(key.WithKeys("e"), key.WithHelp("e", "edit")),
 		Delete:     key.NewBinding(key.WithKeys("x", "d"), key.WithHelp("x/d", "delete")),
 		Save:       key.NewBinding(key.WithKeys("ctrl+s"), key.WithHelp("ctrl+s", "save")),
-		Cancel:     key.NewBinding(key.WithKeys("q"), key.WithHelp("q", "cancel")),
 		Search:     key.NewBinding(key.WithKeys("/"), key.WithHelp("/", "search")),
 		SearchBack: key.NewBinding(key.WithKeys("esc")),
 
@@ -100,6 +99,8 @@ func NewKeyMap(useVim bool) KeyMap {
 	}
 
 	if useVim {
+		km.Cancel = key.NewBinding(key.WithKeys("q"), key.WithHelp("q", "cancel"))
+
 		// vim-specific form navigation
 		km.NextField = key.NewBinding(key.WithKeys("down", "j"), key.WithHelp("↓/j", "next field"))
 		km.PrevField = key.NewBinding(key.WithKeys("up", "k"), key.WithHelp("↑/k", "prev field"))
@@ -115,6 +116,8 @@ func NewKeyMap(useVim bool) KeyMap {
 		km.RatingUp = key.NewBinding(key.WithKeys("l"), key.WithHelp("l", "increase rating"))
 		km.RatingDown = key.NewBinding(key.WithKeys("h"), key.WithHelp("h", "decrease rating"))
 	} else {
+		km.Cancel = key.NewBinding(key.WithKeys("esc"), key.WithHelp("esc", "cancel"))
+
 		// standard form navigation
 		km.NextField = key.NewBinding(key.WithKeys("down", "tab"), key.WithHelp("↓/tab", "next field"))
 		km.PrevField = key.NewBinding(key.WithKeys("up", "shift+tab"), key.WithHelp("↑/shift+tab", "prev field"))
