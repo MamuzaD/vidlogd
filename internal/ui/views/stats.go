@@ -606,7 +606,7 @@ func (m StatsModel) Update(msg tea.Msg) (StatsModel, tea.Cmd) {
 						selectedItem := m.videoList.SelectedItem()
 						if videoItem, ok := selectedItem.(VideoItem); ok {
 							return m, func() tea.Msg {
-								return models.NavigateMsg{View: models.LogVideoView, VideoID: videoItem.video.ID}
+								return models.NavigateMsg{View: models.LogVideoView, State: models.VideoRouteState{VideoID: videoItem.video.ID}}
 							}
 						}
 					}
@@ -747,7 +747,7 @@ func (m StatsModel) handleVideoSelection() (StatsModel, tea.Cmd) {
 	selectedItem := m.videoList.SelectedItem()
 	if videoItem, ok := selectedItem.(VideoItem); ok {
 		return m, func() tea.Msg {
-			return models.NavigateMsg{View: models.LogDetailsView, VideoID: videoItem.video.ID}
+			return models.NavigateMsg{View: models.LogDetailsView, State: models.VideoRouteState{VideoID: videoItem.video.ID}}
 		}
 	}
 	return m, nil

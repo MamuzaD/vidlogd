@@ -171,8 +171,8 @@ func (m LogListModel) Update(msg tea.Msg) (LogListModel, tea.Cmd) {
 					videoToEdit := m.videos[selectedRow]
 					return m, func() tea.Msg {
 						return models.NavigateMsg{
-							View:    models.LogVideoView,
-							VideoID: videoToEdit.ID,
+							View:  models.LogVideoView,
+							State: models.VideoRouteState{VideoID: videoToEdit.ID},
 						}
 					}
 				}
@@ -264,7 +264,7 @@ func (m LogListModel) handleSelection() (LogListModel, tea.Cmd) {
 	if selectedRow < len(m.videos) {
 		selectedVideo := m.videos[selectedRow]
 		return m, func() tea.Msg {
-			return models.NavigateMsg{View: models.LogDetailsView, VideoID: selectedVideo.ID}
+			return models.NavigateMsg{View: models.LogDetailsView, State: models.VideoRouteState{VideoID: selectedVideo.ID}}
 		}
 	}
 	return m, nil

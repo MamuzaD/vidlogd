@@ -36,7 +36,7 @@ func NewLogVideoModel(videoID string) LogVideoModel {
 						// TODO: add errors ui
 					}
 				}
-				return func() tea.Msg { return models.NavigateMsg{View: models.LogListView} }
+				return func() tea.Msg { return models.BackMsg{} }
 			} else {
 				// create new video
 				video := CreateVideoFromForm(f)
@@ -46,17 +46,17 @@ func NewLogVideoModel(videoID string) LogVideoModel {
 				// clear form by sending clear message then navigate
 				return tea.Batch(
 					func() tea.Msg { return models.ClearFormMsg{} },
-					func() tea.Msg { return models.NavigateMsg{View: models.MainMenuView} },
+					func() tea.Msg { return models.BackMsg{} },
 				)
 			}
 		},
 		func() tea.Cmd {
 			if editing {
 				// when editing, cancel without saving (reset)
-				return func() tea.Msg { return models.NavigateMsg{View: models.LogListView} }
+				return func() tea.Msg { return models.BackMsg{} }
 			} else {
 				// when creating new, preserve form state and go back to main menu
-				return func() tea.Msg { return models.NavigateMsg{View: models.MainMenuView} }
+				return func() tea.Msg { return models.BackMsg{} }
 			}
 		},
 	)

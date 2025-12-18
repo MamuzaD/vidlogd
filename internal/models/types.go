@@ -14,8 +14,25 @@ const (
 )
 
 type NavigateMsg struct {
-	View    ViewType
-	VideoID string // video to edit
+	View  ViewType
+	State any // arbitrary view state (route params)
+}
+
+type BackMsg struct{}
+
+type Route struct {
+	View  ViewType
+	State any
+}
+
+// -- route state payloads --
+
+type VideoRouteState struct {
+	VideoID string
+}
+
+type SettingsRouteState struct {
+	ListIndex int
 }
 
 type ClearFormMsg struct{}
