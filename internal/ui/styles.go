@@ -25,6 +25,7 @@ var (
 	PrimaryBackground = lipgloss.Color(RedBg)
 	White             = lipgloss.Color("#FFFFFF")
 	Gray              = lipgloss.Color("#909090")
+	DangerColor       = lipgloss.Color(Red)
 )
 
 // set theme colors and update all styles
@@ -128,6 +129,15 @@ func initStyles() {
 		Padding(0, 1).
 		Margin(0, 1).
 		Height(1)
+
+	// modal styles
+	ModalStyle = lipgloss.NewStyle().
+		Border(lipgloss.RoundedBorder()).
+		BorderForeground(DangerColor)
+
+	DangerStyle = lipgloss.NewStyle().
+		Foreground(DangerColor).
+		Bold(true)
 }
 
 var (
@@ -164,6 +174,10 @@ var (
 
 	// search box style
 	SearchStyle lipgloss.Style
+
+	// modal styles
+	ModalStyle  lipgloss.Style
+	DangerStyle lipgloss.Style
 )
 
 // centerHorizontally centers content horizontally in the terminal

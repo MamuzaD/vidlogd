@@ -8,6 +8,7 @@ import (
 	"github.com/charmbracelet/bubbles/table"
 	"github.com/charmbracelet/bubbles/textinput"
 	tea "github.com/charmbracelet/bubbletea"
+	"github.com/charmbracelet/lipgloss"
 	"github.com/mamuzad/vidlogd/internal/models"
 	"github.com/mamuzad/vidlogd/internal/ui"
 	"github.com/sahilm/fuzzy"
@@ -58,6 +59,8 @@ type LogListModel struct {
 	filtered   []models.Video
 	isFiltered bool
 	focused    bool
+
+	deleteModal ui.DeleteModal
 }
 
 func NewLogListModel() LogListModel {
@@ -143,7 +146,33 @@ func (m LogListModel) Update(msg tea.Msg) (LogListModel, tea.Cmd) {
 		m.filterVideos()
 		m.updateTableRows()
 		return m, nil
+	case ui.DeleteConfirmMsg:
+		if m.deleteModal.Target == nil {
+			return m, nil
+		}
+		targetID := m.deleteModal.Target.ID
+		m.deleteModal.Hide()
+		return m, func() tea.Msg {
+			if err := models.DeleteVideo(targetID); err != nil {
+				return err
+			}
+			videos, err := models.LoadVideos()
+			if err != nil {
+				return err
+			}
+			return LoadVideosMsg{videos: videos}
+		}
+	case ui.DeleteCancelMsg:
+		m.deleteModal.Hide()
+		return m, nil
 	case tea.KeyMsg:
+		if m.deleteModal.Visible {
+			handled, cmd := m.deleteModal.Update(msg)
+			if handled {
+				return m, cmd
+			}
+		}
+
 		switch {
 		case key.Matches(msg, ui.GlobalKeyMap.Help):
 			m.help.ShowAll = !m.help.ShowAll
@@ -187,20 +216,14 @@ func (m LogListModel) Update(msg tea.Msg) (LogListModel, tea.Cmd) {
 		case key.Matches(msg, ui.GlobalKeyMap.Delete): // quick delete shortcut
 			if len(m.videos) > 0 {
 				selectedRow := m.table.Cursor()
-				if selectedRow < len(m.videos) {
-					videoToDelete := m.videos[selectedRow]
-					return m, func() tea.Msg {
-						err := models.DeleteVideo(videoToDelete.ID)
-						if err != nil {
-							return err
-						}
-						// reload videos after deletion
-						videos, err := models.LoadVideos()
-						if err != nil {
-							return err
-						}
-						return LoadVideosMsg{videos: videos}
-					}
+				videosToUse := m.videos
+				if m.isFiltered {
+					videosToUse = m.filtered
+				}
+				if selectedRow < len(videosToUse) {
+					videoToDelete := videosToUse[selectedRow] // copy
+					m.deleteModal.Show(&videoToDelete)
+					return m, nil
 				}
 			}
 			return m, nil
@@ -299,7 +322,12 @@ func (m LogListModel) View() string {
 
 	tableContent := m.table.View()
 	styledTable := ui.TableStyle.Render(tableContent)
-	s.WriteString("\n" + styledTable)
+	if m.deleteModal.Visible {
+		width := lipgloss.Width(styledTable)
+		s.WriteString(m.deleteModal.View(width, 6))
+	} else {
+		s.WriteString("\n" + styledTable)
+	}
 
 	// Add help at the bottom
 	keymap := LogListKeyMap{}

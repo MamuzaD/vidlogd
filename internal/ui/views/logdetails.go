@@ -9,6 +9,7 @@ import (
 	"github.com/charmbracelet/bubbles/key"
 	"github.com/charmbracelet/bubbles/list"
 	tea "github.com/charmbracelet/bubbletea"
+	"github.com/charmbracelet/lipgloss"
 	"github.com/mamuzad/vidlogd/internal/models"
 	"github.com/mamuzad/vidlogd/internal/ui"
 )
@@ -78,6 +79,8 @@ type LogDetailsModel struct {
 	video       *models.Video
 	actionsList list.Model
 	help        help.Model
+
+	deleteModal ui.DeleteModal
 }
 
 func NewLogDetailsModel(videoID string) LogDetailsModel {
@@ -123,7 +126,27 @@ func (m LogDetailsModel) Init() tea.Cmd {
 
 func (m LogDetailsModel) Update(msg tea.Msg) (LogDetailsModel, tea.Cmd) {
 	switch msg := msg.(type) {
+	case ui.DeleteConfirmMsg:
+		if m.video == nil {
+			return m, nil
+		}
+		targetID := m.video.ID
+		return m, func() tea.Msg {
+			if err := models.DeleteVideo(targetID); err != nil {
+				return err
+			}
+			return models.BackMsg{}
+		}
+	case ui.DeleteCancelMsg:
+		return m, nil
 	case tea.KeyMsg:
+		if m.deleteModal.Visible {
+			handled, cmd := m.deleteModal.Update(msg)
+			if handled {
+				return m, cmd
+			}
+		}
+
 		switch {
 		case key.Matches(msg, ui.GlobalKeyMap.Help):
 			m.help.ShowAll = !m.help.ShowAll
@@ -139,11 +162,8 @@ func (m LogDetailsModel) Update(msg tea.Msg) (LogDetailsModel, tea.Cmd) {
 			}
 		case key.Matches(msg, ui.GlobalKeyMap.Delete): // quick delete shortcut
 			if m.video != nil {
-				if err := models.DeleteVideo(m.video.ID); err == nil {
-					return m, func() tea.Msg {
-						return models.BackMsg{}
-					}
-				}
+				m.deleteModal.Show(m.video)
+				return m, nil
 			}
 		case key.Matches(msg, ui.GlobalKeyMap.Select):
 			selectedItem, ok := m.actionsList.SelectedItem().(ActionItem)
@@ -163,11 +183,8 @@ func (m LogDetailsModel) Update(msg tea.Msg) (LogDetailsModel, tea.Cmd) {
 				}
 			case "delete":
 				if m.video != nil {
-					if err := models.DeleteVideo(m.video.ID); err == nil {
-						return m, func() tea.Msg {
-							return models.BackMsg{}
-						}
-					}
+					m.deleteModal.Show(m.video)
+					return m, nil
 				}
 			case "back":
 				return m, func() tea.Msg {
@@ -244,6 +261,11 @@ func (m LogDetailsModel) View() string {
 
 	keymap := LogDetailsKeyMap{}
 	s.WriteString(m.help.View(keymap))
+
+	if m.deleteModal.Visible {
+		width := lipgloss.Width(m.actionsList.View())
+		s.WriteString(m.deleteModal.View(width, 1))
+	}
 
 	return s.String()
 }
