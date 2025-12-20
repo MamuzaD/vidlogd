@@ -192,6 +192,8 @@ func (m SettingsModel) cycleSetting() (SettingsModel, tea.Cmd) {
 	nextIndex := (currentIndex + 1) % len(selectedItem.options)
 	newValue := selectedItem.options[nextIndex]
 
+	var cmd tea.Cmd
+
 	// update the app settings
 	switch selectedItem.settingType {
 	case VimMotionsToggle:
@@ -200,6 +202,7 @@ func (m SettingsModel) cycleSetting() (SettingsModel, tea.Cmd) {
 	case ThemeSelector:
 		Settings.Theme = newValue
 		ApplyTheme(Settings.Theme)
+		cmd = func() tea.Msg { return models.UIRefreshMsg{} }
 	}
 
 	// save settings to file
@@ -218,7 +221,7 @@ func (m SettingsModel) cycleSetting() (SettingsModel, tea.Cmd) {
 	}
 	m.list.SetItems(items)
 
-	return m, nil
+	return m, cmd
 }
 
 func (m SettingsModel) handleSettingSelection() (SettingsModel, tea.Cmd) {

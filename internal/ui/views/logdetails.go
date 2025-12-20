@@ -144,6 +144,7 @@ func (m LogDetailsModel) Update(msg tea.Msg) (LogDetailsModel, tea.Cmd) {
 			// pass ref to ensure state changes are persisted
 			handled, cmd := (&m.deleteModal).Update(msg)
 			if handled {
+				// Modal state has been updated (Hide was called), return with command
 				return m, cmd
 			}
 		}
@@ -243,7 +244,7 @@ func (m LogDetailsModel) View() string {
 		rewatched = "  first watch"
 	}
 	s.WriteString(fmt.Sprintf(
-		"rating: %s (%.1f/5)  %s\n\n",
+		"Rating: %s (%.1f/5)  %s\n\n",
 		renderStars(m.video.Rating),
 		m.video.Rating,
 		rewatched,

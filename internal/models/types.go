@@ -20,6 +20,9 @@ type NavigateMsg struct {
 
 type BackMsg struct{}
 
+// UIRefreshMsg is emitted when UI globals (theme/styles) change.
+type UIRefreshMsg struct{}
+
 type Route struct {
 	View  ViewType
 	State any

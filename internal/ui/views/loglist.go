@@ -63,6 +63,11 @@ type LogListModel struct {
 	deleteModal ui.DeleteModal
 }
 
+// RefreshStyles reapplies cached styles
+func (m *LogListModel) RefreshStyles() {
+	m.updateTableStyles()
+}
+
 func NewLogListModel() LogListModel {
 	columns := []table.Column{
 		{Title: "Title", Width: 35},
@@ -282,6 +287,13 @@ func (m *LogListModel) updateTableRows() {
 		rows[i] = table.Row{title, channel, ratingStr, logDate}
 	}
 	m.table.SetRows(rows)
+}
+
+func (m *LogListModel) updateTableStyles() {
+	s := table.DefaultStyles()
+	s.Header = ui.TableHeaderStyle
+	s.Selected = ui.TableSelectedRowStyle
+	m.table.SetStyles(s)
 }
 
 func (m LogListModel) handleSelection() (LogListModel, tea.Cmd) {

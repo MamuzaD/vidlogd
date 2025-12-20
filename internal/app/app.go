@@ -163,6 +163,35 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 	case models.NavigateMsg:
 		return m.navigateTo(models.Route(msg))
+
+	case models.UIRefreshMsg:
+		// Some views cache styles (e.g. bubbles/table). Refresh any existing instances.
+		type styleRefresher interface{ RefreshStyles() }
+		refresh := func(v any) {
+			if r, ok := v.(styleRefresher); ok {
+				r.RefreshStyles()
+			}
+		}
+
+		if m.mainMenu != nil {
+			refresh(m.mainMenu)
+		}
+		if m.logVideo != nil {
+			refresh(m.logVideo)
+		}
+		if m.logList != nil {
+			refresh(m.logList)
+		}
+		if m.logDetails != nil {
+			refresh(m.logDetails)
+		}
+		if m.settings != nil {
+			refresh(m.settings)
+		}
+		if m.stats != nil {
+			refresh(m.stats)
+		}
+		return m, nil
 	}
 
 	switch m.currentView {
