@@ -147,10 +147,10 @@ func (m LogListModel) Update(msg tea.Msg) (LogListModel, tea.Cmd) {
 		m.updateTableRows()
 		return m, nil
 	case ui.DeleteConfirmMsg:
-		if m.deleteModal.Target == nil {
+		if msg.TargetID == "" {
 			return m, nil
 		}
-		targetID := m.deleteModal.Target.ID
+		targetID := msg.TargetID
 		m.deleteModal.Hide()
 		return m, func() tea.Msg {
 			if err := models.DeleteVideo(targetID); err != nil {

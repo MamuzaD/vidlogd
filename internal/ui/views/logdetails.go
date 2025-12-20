@@ -127,10 +127,10 @@ func (m LogDetailsModel) Init() tea.Cmd {
 func (m LogDetailsModel) Update(msg tea.Msg) (LogDetailsModel, tea.Cmd) {
 	switch msg := msg.(type) {
 	case ui.DeleteConfirmMsg:
-		if m.video == nil {
+		if msg.TargetID == "" {
 			return m, nil
 		}
-		targetID := m.video.ID
+		targetID := msg.TargetID
 		return m, func() tea.Msg {
 			if err := models.DeleteVideo(targetID); err != nil {
 				return err
@@ -141,7 +141,8 @@ func (m LogDetailsModel) Update(msg tea.Msg) (LogDetailsModel, tea.Cmd) {
 		return m, nil
 	case tea.KeyMsg:
 		if m.deleteModal.Visible {
-			handled, cmd := m.deleteModal.Update(msg)
+			// pass ref to ensure state changes are persisted
+			handled, cmd := (&m.deleteModal).Update(msg)
 			if handled {
 				return m, cmd
 			}

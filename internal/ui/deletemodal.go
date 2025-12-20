@@ -3,11 +3,14 @@ package ui
 import (
 	"fmt"
 
+	"github.com/charmbracelet/bubbles/key"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/mamuzad/vidlogd/internal/models"
 )
 
-type DeleteConfirmMsg struct{}
+type DeleteConfirmMsg struct {
+	TargetID string
+}
 
 type DeleteCancelMsg struct{}
 
@@ -35,13 +38,19 @@ func (m *DeleteModal) Update(msg tea.KeyMsg) (handled bool, cmd tea.Cmd) {
 		return false, nil
 	}
 
-	switch msg.String() {
-	case "y", "Y":
+	switch {
+	case key.Matches(msg, GlobalKeyMap.Yes):
+		targetID := ""
+		if m.Target != nil {
+			targetID = m.Target.ID
+		}
 		m.Hide()
-		return true, func() tea.Msg { return DeleteConfirmMsg{} }
-	case "n", "N", "esc", "q", "Q":
+		return true, func() tea.Msg { return DeleteConfirmMsg{TargetID: targetID} }
+
+	case key.Matches(msg, GlobalKeyMap.No):
 		m.Hide()
 		return true, func() tea.Msg { return DeleteCancelMsg{} }
+
 	default:
 		// swallow all other keys while the modal is open
 		return true, nil
@@ -54,10 +63,12 @@ func (m DeleteModal) View(width int, padding int) string {
 	}
 
 	title := m.Target.Title
+	yesHelp := GlobalKeyMap.Yes.Help().Key
+	noHelp := GlobalKeyMap.No.Help().Key
 	body := ModalStyle.Padding(padding, 4).Render(
 		DangerStyle.Render("Confirm delete") + "\n\n" +
 			fmt.Sprintf("Delete \"%s\"?\n\n", title) +
-			DescriptionStyle.Render("y: delete   esc/n: cancel"),
+			DescriptionStyle.Render(fmt.Sprintf("%s: delete   %s: cancel", yesHelp, noHelp)),
 	)
 
 	if width <= 0 {
