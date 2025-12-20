@@ -28,7 +28,7 @@ func SortVideosByLogDate(videos []Video) {
 }
 
 func LoadVideos() ([]Video, error) {
-	videosPath, err := getVideosFilePath()
+	videosPath, err := VideosFilePath()
 	if err != nil {
 		return nil, fmt.Errorf("failed to get videos file path: %w", err)
 	}
@@ -87,7 +87,7 @@ func SaveVideo(video Video) error {
 		return fmt.Errorf("failed to marshal videos to JSON: %w", err)
 	}
 
-	videosPath, err := getVideosFilePath()
+	videosPath, err := VideosFilePath()
 	if err != nil {
 		return fmt.Errorf("failed to get videos file path: %w", err)
 	}
@@ -128,7 +128,7 @@ func UpdateVideo(updatedVideo Video) error {
 		return fmt.Errorf("failed to marshal videos to JSON: %w", err)
 	}
 
-	videosPath, err := getVideosFilePath()
+	videosPath, err := VideosFilePath()
 	if err != nil {
 		return fmt.Errorf("failed to get videos file path: %w", err)
 	}
@@ -198,7 +198,7 @@ func DeleteVideo(id string) error {
 		return fmt.Errorf("failed to marshal videos to JSON: %w", err)
 	}
 
-	videosPath, err := getVideosFilePath()
+	videosPath, err := VideosFilePath()
 	if err != nil {
 		return fmt.Errorf("failed to get videos file path: %w", err)
 	}
@@ -212,7 +212,7 @@ func DeleteVideo(id string) error {
 
 // ============================= settings =============================
 func LoadSettings() AppSettings {
-	settingsPath, err := getSettingsFilePath()
+	settingsPath, err := SettingsFilePath()
 	if err != nil {
 		// error getting settings path, return defaults
 		return GetDefaultSettings()
@@ -240,11 +240,7 @@ func LoadSettings() AppSettings {
 
 // save settings to file
 func SaveSettings(settings AppSettings) error {
-	if err := ensureSettingsDir(); err != nil {
-		return err
-	}
-
-	settingsPath, err := getSettingsFilePath()
+	settingsPath, err := SettingsFilePath()
 	if err != nil {
 		return err
 	}

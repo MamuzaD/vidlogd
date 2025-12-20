@@ -7,7 +7,7 @@ import (
 	"runtime"
 )
 
-func getDataDir() (string, error) {
+func DataDir() (string, error) {
 	var baseDir string
 
 	// Follow XDG Base Directory Specification on Unix-like systems
@@ -42,29 +42,18 @@ func getDataDir() (string, error) {
 	return dataDir, nil
 }
 
-func getVideosFilePath() (string, error) {
-	dataDir, err := getDataDir()
+func VideosFilePath() (string, error) {
+	dataDir, err := DataDir()
 	if err != nil {
 		return "", err
 	}
 	return filepath.Join(dataDir, "videos.json"), nil
 }
 
-// Get settings file path
-func getSettingsFilePath() (string, error) {
-	dataDir, err := getDataDir()
+func SettingsFilePath() (string, error) {
+	dataDir, err := DataDir()
 	if err != nil {
 		return "", err
 	}
 	return filepath.Join(dataDir, "settings.json"), nil
-}
-
-// Ensure settings directory exists
-func ensureSettingsDir() error {
-	settingsPath, err := getSettingsFilePath()
-	if err != nil {
-		return err
-	}
-	dir := filepath.Dir(settingsPath)
-	return os.MkdirAll(dir, 0755)
 }
