@@ -11,6 +11,7 @@ const (
 	LogDetailsView
 	SettingsView
 	StatsView
+	BackupView
 )
 
 type NavigateMsg struct {

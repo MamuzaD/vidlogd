@@ -47,6 +47,7 @@ func NewMainMenuModel() MainMenuModel {
 		MenuItem{title: "log video"},
 		MenuItem{title: "view logs"},
 		MenuItem{title: "stats"},
+		MenuItem{title: "sync"},
 		MenuItem{title: "settings"},
 		MenuItem{title: "exit"},
 	}
@@ -109,6 +110,10 @@ func (m MainMenuModel) handleSelection() (MainMenuModel, tea.Cmd) {
 	case "stats":
 		return m, func() tea.Msg {
 			return models.NavigateMsg{View: models.StatsView}
+		}
+	case "sync":
+		return m, func() tea.Msg {
+			return models.NavigateMsg{View: models.BackupView}
 		}
 	case "settings":
 		return m, func() tea.Msg {
