@@ -127,10 +127,10 @@ func (m LogDetailsModel) Init() tea.Cmd {
 func (m LogDetailsModel) Update(msg tea.Msg) (LogDetailsModel, tea.Cmd) {
 	switch msg := msg.(type) {
 	case ui.DeleteConfirmMsg:
-		if m.video == nil {
+		if msg.TargetID == "" {
 			return m, nil
 		}
-		targetID := m.video.ID
+		targetID := msg.TargetID
 		return m, func() tea.Msg {
 			if err := models.DeleteVideo(targetID); err != nil {
 				return err
@@ -141,8 +141,10 @@ func (m LogDetailsModel) Update(msg tea.Msg) (LogDetailsModel, tea.Cmd) {
 		return m, nil
 	case tea.KeyMsg:
 		if m.deleteModal.Visible {
-			handled, cmd := m.deleteModal.Update(msg)
+			// pass ref to ensure state changes are persisted
+			handled, cmd := (&m.deleteModal).Update(msg)
 			if handled {
+				// Modal state has been updated (Hide was called), return with command
 				return m, cmd
 			}
 		}
@@ -242,18 +244,29 @@ func (m LogDetailsModel) View() string {
 		rewatched = "  first watch"
 	}
 	s.WriteString(fmt.Sprintf(
-		"rating: %s (%.1f/5)  %s\n\n",
+		"Rating: %s (%.1f/5)  %s\n\n",
 		renderStars(m.video.Rating),
 		m.video.Rating,
 		rewatched,
 	))
 
+	reviewNewline := ""
+	if !m.deleteModal.Visible {
+		reviewNewline = "\n\n"
+	}
+
+	s.WriteString("Review:\n")
 	if m.video.Review != "" {
-		s.WriteString("Review:" + "\n")
-		s.WriteString(ui.ReviewStyle.Render(m.video.Review) + "\n\n")
+		s.WriteString(ui.ReviewStyle.Render(m.video.Review))
 	} else {
-		s.WriteString("Review:" + "\n")
-		s.WriteString(ui.ReviewStyle.Render("no review") + "\n\n")
+		s.WriteString(ui.ReviewStyle.Render("no review"))
+	}
+	s.WriteString(reviewNewline)
+
+	if m.deleteModal.Visible {
+		width := lipgloss.Width(s.String()) - 2
+		s.WriteString(m.deleteModal.View(width, 0, 2) + "\n")
+		return s.String()
 	}
 
 	s.WriteString("actions" + "\n\n")
@@ -261,11 +274,6 @@ func (m LogDetailsModel) View() string {
 
 	keymap := LogDetailsKeyMap{}
 	s.WriteString(m.help.View(keymap))
-
-	if m.deleteModal.Visible {
-		width := lipgloss.Width(m.actionsList.View())
-		s.WriteString(m.deleteModal.View(width, 1))
-	}
 
 	return s.String()
 }

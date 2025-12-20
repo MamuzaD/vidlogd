@@ -63,6 +63,11 @@ type LogListModel struct {
 	deleteModal ui.DeleteModal
 }
 
+// RefreshStyles reapplies cached styles
+func (m *LogListModel) RefreshStyles() {
+	m.updateTableStyles()
+}
+
 func NewLogListModel() LogListModel {
 	columns := []table.Column{
 		{Title: "Title", Width: 35},
@@ -147,10 +152,10 @@ func (m LogListModel) Update(msg tea.Msg) (LogListModel, tea.Cmd) {
 		m.updateTableRows()
 		return m, nil
 	case ui.DeleteConfirmMsg:
-		if m.deleteModal.Target == nil {
+		if msg.TargetID == "" {
 			return m, nil
 		}
-		targetID := m.deleteModal.Target.ID
+		targetID := msg.TargetID
 		m.deleteModal.Hide()
 		return m, func() tea.Msg {
 			if err := models.DeleteVideo(targetID); err != nil {
@@ -284,6 +289,13 @@ func (m *LogListModel) updateTableRows() {
 	m.table.SetRows(rows)
 }
 
+func (m *LogListModel) updateTableStyles() {
+	s := table.DefaultStyles()
+	s.Header = ui.TableHeaderStyle
+	s.Selected = ui.TableSelectedRowStyle
+	m.table.SetStyles(s)
+}
+
 func (m LogListModel) handleSelection() (LogListModel, tea.Cmd) {
 	if len(m.videos) == 0 {
 		return m, nil
@@ -324,7 +336,7 @@ func (m LogListModel) View() string {
 	styledTable := ui.TableStyle.Render(tableContent)
 	if m.deleteModal.Visible {
 		width := lipgloss.Width(styledTable)
-		s.WriteString(m.deleteModal.View(width, 6))
+		s.WriteString(m.deleteModal.View(width, 6, 6))
 	} else {
 		s.WriteString("\n" + styledTable)
 	}

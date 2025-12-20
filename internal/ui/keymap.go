@@ -63,6 +63,10 @@ type KeyMap struct {
 	// rating input (for form)
 	Rating     key.Binding // HACK: show rating keys as single line
 	RatingHalf key.Binding // for adding 0.5
+
+	// yes / no
+	Yes key.Binding
+	No  key.Binding
 }
 
 func NewKeyMap(useVim bool) KeyMap {
@@ -96,6 +100,10 @@ func NewKeyMap(useVim bool) KeyMap {
 			key.WithHelp("0-5", "set rating"),
 		),
 		RatingHalf: key.NewBinding(key.WithKeys("."), key.WithHelp(".", "add 0.5")),
+
+		// yes / no
+		Yes: key.NewBinding(key.WithKeys("y", "Y"), key.WithHelp("y/Y", "yes")),
+		No:  key.NewBinding(key.WithKeys("n", "N", "esc"), key.WithHelp("n/N", "no")),
 	}
 
 	if useVim {
