@@ -249,12 +249,23 @@ func (m LogDetailsModel) View() string {
 		rewatched,
 	))
 
+	reviewNewline := ""
+	if !m.deleteModal.Visible {
+		reviewNewline = "\n\n"
+	}
+
+	s.WriteString("Review:\n")
 	if m.video.Review != "" {
-		s.WriteString("Review:" + "\n")
-		s.WriteString(ui.ReviewStyle.Render(m.video.Review) + "\n\n")
+		s.WriteString(ui.ReviewStyle.Render(m.video.Review))
 	} else {
-		s.WriteString("Review:" + "\n")
-		s.WriteString(ui.ReviewStyle.Render("no review") + "\n\n")
+		s.WriteString(ui.ReviewStyle.Render("no review"))
+	}
+	s.WriteString(reviewNewline)
+
+	if m.deleteModal.Visible {
+		width := lipgloss.Width(s.String()) - 2
+		s.WriteString(m.deleteModal.View(width, 0, 2) + "\n")
+		return s.String()
 	}
 
 	s.WriteString("actions" + "\n\n")
@@ -262,11 +273,6 @@ func (m LogDetailsModel) View() string {
 
 	keymap := LogDetailsKeyMap{}
 	s.WriteString(m.help.View(keymap))
-
-	if m.deleteModal.Visible {
-		width := lipgloss.Width(m.actionsList.View())
-		s.WriteString(m.deleteModal.View(width, 1))
-	}
 
 	return s.String()
 }

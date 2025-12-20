@@ -324,7 +324,7 @@ func (m LogListModel) View() string {
 	styledTable := ui.TableStyle.Render(tableContent)
 	if m.deleteModal.Visible {
 		width := lipgloss.Width(styledTable)
-		s.WriteString(m.deleteModal.View(width, 6))
+		s.WriteString(m.deleteModal.View(width, 6, 6))
 	} else {
 		s.WriteString("\n" + styledTable)
 	}
