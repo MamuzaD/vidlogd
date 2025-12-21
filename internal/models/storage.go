@@ -215,24 +215,24 @@ func LoadSettings() AppSettings {
 	settingsPath, err := SettingsFilePath()
 	if err != nil {
 		// error getting settings path, return defaults
-		return GetDefaultSettings()
+		return DefaultSettings()
 	}
 
 	if _, err := os.Stat(settingsPath); os.IsNotExist(err) {
 		// file doesn't exist, create w/ default
-		defaults := GetDefaultSettings()
+		defaults := DefaultSettings()
 		SaveSettings(defaults)
 		return defaults
 	}
 
 	data, err := os.ReadFile(settingsPath)
 	if err != nil {
-		return GetDefaultSettings()
+		return DefaultSettings()
 	}
 
 	var settings AppSettings
 	if err := json.Unmarshal(data, &settings); err != nil {
-		return GetDefaultSettings()
+		return DefaultSettings()
 	}
 
 	return settings

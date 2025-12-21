@@ -3,6 +3,7 @@ package views
 import (
 	"fmt"
 	"io"
+	"strings"
 
 	"github.com/charmbracelet/bubbles/key"
 	"github.com/charmbracelet/bubbles/list"
@@ -21,6 +22,8 @@ const (
 	VimMotionsToggle SettingType = iota
 	ThemeSelector
 	APIKeyEditor
+	BackupRepoEditor
+	AutoSyncToggle
 )
 
 type SettingItem struct {
@@ -75,6 +78,7 @@ func NewSettingsModel(index int) SettingsModel {
 	ui.UpdateKeyMap()
 
 	displayAPIKey := renderAPIKey()
+	displayBackupRepo := renderBackupRepo()
 
 	items := []list.Item{
 		SettingItem{
@@ -98,10 +102,24 @@ func NewSettingsModel(index int) SettingsModel {
 			value:       displayAPIKey,
 			options:     []string{"edit"},
 		},
+		SettingItem{
+			settingType: BackupRepoEditor,
+			title:       "Backup Repo",
+			description: "GitHub repo for syncing",
+			value:       displayBackupRepo,
+			options:     []string{"edit"},
+		},
+		SettingItem{
+			settingType: AutoSyncToggle,
+			title:       "Auto Sync",
+			description: "sync on app startup and after saves/edits",
+			value:       getBoolString(Settings.AutoSync),
+			options:     []string{"enabled", "disabled"},
+		},
 	}
 
 	const defaultWidth = 40
-	const listHeight = 16
+	const listHeight = 20
 
 	l := list.New(items, SettingItemDelegate{}, defaultWidth, listHeight)
 	l.SetShowStatusBar(false)
@@ -110,6 +128,17 @@ func NewSettingsModel(index int) SettingsModel {
 	l.SetShowHelp(true)
 	l.KeyMap.Quit.SetKeys()
 	l.KeyMap.Quit.SetHelp("", "")
+
+	// use starting selection
+	if index < 0 {
+		index = 0
+	}
+	if index >= len(items) {
+		index = len(items) - 1
+	}
+	if len(items) > 0 {
+		l.Select(index)
+	}
 
 	return SettingsModel{
 		list: l,
@@ -134,11 +163,16 @@ func (m SettingsModel) Update(msg tea.Msg) (SettingsModel, tea.Cmd) {
 
 		items := m.list.Items()
 		for i, item := range items {
-			if settingItem, ok := item.(SettingItem); ok && settingItem.settingType == APIKeyEditor {
-				displayAPIKey := renderAPIKey()
-				settingItem.value = displayAPIKey
-				items[i] = settingItem
-				break
+			if settingItem, ok := item.(SettingItem); ok {
+				if settingItem.settingType == APIKeyEditor {
+					displayAPIKey := renderAPIKey()
+					settingItem.value = displayAPIKey
+					items[i] = settingItem
+				}
+				if settingItem.settingType == BackupRepoEditor {
+					settingItem.value = renderBackupRepo()
+					items[i] = settingItem
+				}
 			}
 		}
 		m.list.SetItems(items)
@@ -203,11 +237,14 @@ func (m SettingsModel) cycleSetting() (SettingsModel, tea.Cmd) {
 		Settings.Theme = newValue
 		ApplyTheme(Settings.Theme)
 		cmd = func() tea.Msg { return models.UIRefreshMsg{} }
+	case AutoSyncToggle:
+		Settings.AutoSync = newValue == "enabled"
 	}
 
 	// save settings to file
 	if err := models.SaveSettings(Settings); err != nil {
 		// TODO: add error ui
+		return m, nil
 	}
 
 	// update the list item
@@ -242,17 +279,42 @@ func (m SettingsModel) handleSettingSelection() (SettingsModel, tea.Cmd) {
 				apiKeyValue := f.GetValue(0)
 				Settings.APIKey = apiKeyValue
 				if err := models.SaveSettings(Settings); err != nil {
-					// TODO: handle error
+					return func() tea.Msg { return ClearSettingsFormMsg{} }
 				}
 
-				return func() tea.Msg {
-					return ClearSettingsFormMsg{}
-				}
+				return func() tea.Msg { return ClearSettingsFormMsg{} }
 			},
 			func() tea.Cmd {
-				return func() tea.Msg {
-					return ClearSettingsFormMsg{}
+				return func() tea.Msg { return ClearSettingsFormMsg{} }
+			},
+		)
+		m.form = &form
+		return m, nil
+	case BackupRepoEditor:
+		fields := []FormField{
+			{
+				Placeholder: "owner/repo or git@github.com:owner/repo.git",
+				Label:       "Backup repo:",
+				Required:    false,
+				CharLimit:   100,
+				Width:       60,
+				Type:        FormFieldText,
+				Value:       Settings.BackupRepo,
+			},
+		}
+
+		form := NewForm("Backup Repo", fields, "save")
+		form.SetHandlers(
+			func(f FormModel) tea.Cmd {
+				repoValue := strings.TrimSpace(f.GetValue(0))
+				Settings.BackupRepo = repoValue
+				if err := models.SaveSettings(Settings); err != nil {
+					return func() tea.Msg { return ClearSettingsFormMsg{} }
 				}
+				return func() tea.Msg { return ClearSettingsFormMsg{} }
+			},
+			func() tea.Cmd {
+				return func() tea.Msg { return ClearSettingsFormMsg{} }
 			},
 		)
 		m.form = &form
@@ -317,7 +379,18 @@ func renderAPIKey() (apiKey string) {
 	return
 }
 
-func (m SettingsModel) SelectIndex(index int) {
+func renderBackupRepo() string {
+	repo := strings.TrimSpace(Settings.BackupRepo)
+	if repo == "" {
+		return "not set"
+	}
+	if len(repo) > 24 {
+		return repo[:24] + "…"
+	}
+	return repo
+}
+
+func (m *SettingsModel) SelectIndex(index int) {
 	m.form = nil
 	m.list.Select(index)
 }

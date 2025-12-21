@@ -58,6 +58,8 @@ type AppSettings struct {
 	VimMotions bool   `json:"vim_motions"`
 	Theme      string `json:"theme"`
 	APIKey     string `json:"api_key"`
+	BackupRepo string `json:"backup_repo"`
+	AutoSync   bool   `json:"auto_sync"`
 }
 
 var (
@@ -66,11 +68,12 @@ var (
 	DateTimeFormat string = "2006-01-02 3:04 PM"
 )
 
-// @TODO :: need to reorganize
-func GetDefaultSettings() AppSettings {
+func DefaultSettings() AppSettings {
 	return AppSettings{
 		VimMotions: true,
 		Theme:      "red",
 		APIKey:     "",
+		BackupRepo: "",
+		AutoSync:   true,
 	}
 }

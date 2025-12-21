@@ -23,6 +23,7 @@ const (
 	SyncViewStatus SyncActionType = iota
 	SyncRun
 	SyncOpenGitTools
+	SyncOpenSettings
 )
 
 type SyncActionItem struct {
@@ -82,6 +83,11 @@ func NewBackupModel() BackupModel {
 			actionType:  SyncOpenGitTools,
 			title:       "lazygit",
 			description: "open lazygit for manual git operations",
+		},
+		SyncActionItem{
+			actionType:  SyncOpenSettings,
+			title:       "settings",
+			description: "edit remote url, auto sync",
 		},
 	}
 
@@ -167,6 +173,13 @@ func (m BackupModel) handleSelection() (BackupModel, tea.Cmd) {
 		return m, m.performSmartSyncCmd
 	case SyncOpenGitTools:
 		return m, m.openGitToolsCmd()
+	case SyncOpenSettings:
+		return m, func() tea.Msg {
+			return models.NavigateMsg{
+				View:  models.SettingsView,
+				State: models.SettingsRouteState{ListIndex: int(BackupRepoEditor)},
+			}
+		}
 	}
 
 	return m, nil
@@ -176,6 +189,7 @@ func (m BackupModel) View() string {
 	header := ui.HeaderStyle.Render("sync & backup")
 
 	repoLine := fmt.Sprintf("󰊢 repo: %s", renderBackupRepo())
+	autoLine := fmt.Sprintf("󰓦 auto sync: %s", getBoolString(Settings.AutoSync))
 	backupPathLine := fmt.Sprintf("󰉋 backup path: %s", renderBackupPath())
 
 	configBox := lipgloss.NewStyle().
@@ -183,7 +197,7 @@ func (m BackupModel) View() string {
 		BorderForeground(ui.Gray).
 		Padding(0, 1).
 		Width(max(56, m.list.Width()-2)).
-		Render(repoLine + "\n" + backupPathLine)
+		Render(repoLine + "\n" + autoLine + "\n" + backupPathLine)
 
 	statusBox := ""
 	if strings.TrimSpace(m.statusMsg) != "" {
@@ -241,12 +255,7 @@ func (m BackupModel) performSmartSyncCmd() tea.Msg {
 }
 
 func (m BackupModel) openGitToolsCmd() tea.Cmd {
-	return nil
-}
-
-func renderBackupRepo() string {
-	// @TODO :: need to get repo
-	return "not configured"
+	return tea.Cmd(func() tea.Msg { return SyncStatusMsg{State: SyncError, Message: "todo: open lazygit or git"} })
 }
 
 func renderBackupPath() string {
