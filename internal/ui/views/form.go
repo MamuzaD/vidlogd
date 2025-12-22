@@ -196,7 +196,7 @@ func NewVideoLogForm(editing bool, existingVideo *models.Video) FormModel {
 		fields[title].Value = existingVideo.Title
 		fields[channel].Value = existingVideo.Channel
 		fields[release].Value = existingVideo.ReleaseDate
-		fields[logDate].Value = existingVideo.LogDate
+		fields[logDate].Value = existingVideo.LogDate.Format(models.DateTimeFormat)
 		ratingValue = existingVideo.Rating
 		if existingVideo.Rewatched {
 			fields[rewatch].Value = "true"

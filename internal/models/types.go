@@ -8,7 +8,7 @@ type Video struct {
 	Title       string    `json:"title"`
 	Channel     string    `json:"channel"`
 	ReleaseDate string    `json:"release_date"`
-	LogDate     string    `json:"log_date"`
+	LogDate     time.Time `json:"log_date"`
 	Rating      float64   `json:"rating"`
 	Rewatched   bool      `json:"rewatched"`
 	Review      string    `json:"review"`
