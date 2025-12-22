@@ -258,14 +258,14 @@ func (m *FormModel) UpdateVimMode() {
 	}
 }
 
-func (m FormModel) GetValue(index int) string {
+func (m FormModel) Value(index int) string {
 	if index < len(m.inputs) {
 		return m.inputs[index].Value()
 	}
 	return ""
 }
 
-func (m FormModel) GetAllValues() []string {
+func (m FormModel) AllValues() []string {
 	values := make([]string, len(m.inputs))
 	for i := range m.inputs {
 		values[i] = m.inputs[i].Value()
@@ -273,7 +273,7 @@ func (m FormModel) GetAllValues() []string {
 	return values
 }
 
-func (m FormModel) GetRating() float64 {
+func (m FormModel) Rating() float64 {
 	return m.ratingValue
 }
 
@@ -790,15 +790,15 @@ func (m FormModel) renderField(i int) string {
 	return s.String()
 }
 
-func CreateVideoFromForm(form FormModel) models.Video {
+func (form FormModel) Video() models.Video {
 	return models.CreateVideo(
-		form.GetValue(url),
-		form.GetValue(title),
-		form.GetValue(channel),
-		form.GetValue(release),
-		form.GetValue(logDate),
-		form.GetValue(review),
-		form.GetValue(rewatch) == "true",
-		form.GetRating(),
+		form.Value(url),
+		form.Value(title),
+		form.Value(channel),
+		form.Value(release),
+		form.Value(logDate),
+		form.Value(review),
+		form.Value(rewatch) == "true",
+		form.Rating(),
 	)
 }

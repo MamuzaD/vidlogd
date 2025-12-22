@@ -6,15 +6,14 @@ import (
 
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
-	"github.com/mamuzad/vidlogd/internal/models"
 	"github.com/mamuzad/vidlogd/internal/ui"
 	"github.com/mamuzad/vidlogd/internal/ui/views"
 )
 
 type Model struct {
-	currentView  models.ViewType
-	currentRoute models.Route
-	history      []models.Route
+	currentView  ui.ViewType
+	currentRoute ui.Route
+	history      []ui.Route
 
 	mainMenu   *views.MainMenuModel
 	logVideo   *views.LogVideoModel
@@ -33,7 +32,7 @@ func (m Model) Init() tea.Cmd {
 	return tea.SetWindowTitle("vidlogd")
 }
 
-func routeEqual(a, b models.Route) bool {
+func routeEqual(a, b ui.Route) bool {
 	if a.View != b.View {
 		return false
 	}
@@ -41,31 +40,31 @@ func routeEqual(a, b models.Route) bool {
 	return reflect.DeepEqual(a.State, b.State)
 }
 
-func (m Model) applyRoute(r models.Route) (Model, tea.Cmd) {
+func (m Model) applyRoute(r ui.Route) (Model, tea.Cmd) {
 	m.currentRoute = r
 	m.currentView = r.View
 
 	switch r.View {
-	case models.MainMenuView:
+	case ui.MainMenuView:
 		if m.mainMenu == nil {
 			mm := views.NewMainMenuModel()
 			m.mainMenu = &mm
 		}
 		return m, m.mainMenu.Init()
-	case models.LogListView:
+	case ui.LogListView:
 		if m.logList == nil {
 			ll := views.NewLogListModel()
 			m.logList = &ll
 		}
 		return m, m.logList.Init()
-	case models.LogVideoView:
+	case ui.LogVideoView:
 		if m.logVideo == nil {
 			lv := views.NewLogVideoModel("")
 			m.logVideo = &lv
 		}
 
 		targetID := ""
-		if st, ok := r.State.(models.VideoRouteState); ok {
+		if st, ok := r.State.(ui.VideoRouteState); ok {
 			targetID = st.VideoID
 		}
 
@@ -81,9 +80,9 @@ func (m Model) applyRoute(r models.Route) (Model, tea.Cmd) {
 		}
 
 		return m, m.logVideo.Init()
-	case models.LogDetailsView:
+	case ui.LogDetailsView:
 		videoID := ""
-		if st, ok := r.State.(models.VideoRouteState); ok {
+		if st, ok := r.State.(ui.VideoRouteState); ok {
 			videoID = st.VideoID
 		}
 		if m.logDetails == nil || m.logDetails.VideoID() != videoID {
@@ -91,9 +90,9 @@ func (m Model) applyRoute(r models.Route) (Model, tea.Cmd) {
 			m.logDetails = &ld
 		}
 		return m, m.logDetails.Init()
-	case models.SettingsView:
+	case ui.SettingsView:
 		index := 0
-		if st, ok := r.State.(models.SettingsRouteState); ok {
+		if st, ok := r.State.(ui.SettingsRouteState); ok {
 			index = st.ListIndex
 		}
 		if m.settings == nil {
@@ -103,13 +102,13 @@ func (m Model) applyRoute(r models.Route) (Model, tea.Cmd) {
 			m.settings.SelectIndex(index)
 		}
 		return m, m.settings.Init()
-	case models.StatsView:
+	case ui.StatsView:
 		if m.stats == nil {
 			s := views.NewStatsModel()
 			m.stats = &s
 		}
 		return m, m.stats.Init()
-	case models.BackupView:
+	case ui.BackupView:
 		if m.backup == nil {
 			b := views.NewBackupModel()
 			m.backup = &b
@@ -120,7 +119,7 @@ func (m Model) applyRoute(r models.Route) (Model, tea.Cmd) {
 	}
 }
 
-func (m Model) navigateTo(r models.Route) (Model, tea.Cmd) {
+func (m Model) navigateTo(r ui.Route) (Model, tea.Cmd) {
 	// only push if diff
 	if routeEqual(m.currentRoute, r) {
 		return m, nil
@@ -131,7 +130,7 @@ func (m Model) navigateTo(r models.Route) (Model, tea.Cmd) {
 
 func (m Model) back() (Model, tea.Cmd) {
 	if len(m.history) == 0 {
-		return m.applyRoute(models.Route{View: models.MainMenuView})
+		return m.applyRoute(ui.Route{View: ui.MainMenuView})
 	}
 
 	last := len(m.history) - 1
@@ -155,7 +154,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return m, tea.Quit
 		}
 
-	case models.ClearFormMsg:
+	case ui.ClearFormMsg:
 		// clear the form by creating a new empty one
 		if m.logVideo == nil {
 			lv := views.NewLogVideoModel("")
@@ -165,13 +164,13 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 		return m, nil
 
-	case models.BackMsg:
+	case ui.BackMsg:
 		return m.back()
 
-	case models.NavigateMsg:
-		return m.navigateTo(models.Route(msg))
+	case ui.NavigateMsg:
+		return m.navigateTo(ui.Route(msg))
 
-	case models.UIRefreshMsg:
+	case ui.UIRefreshMsg:
 		// Some views cache styles (e.g. bubbles/table). Refresh any existing instances.
 		type styleRefresher interface{ RefreshStyles() }
 		refresh := func(v any) {
@@ -205,19 +204,19 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	}
 
 	switch m.currentView {
-	case models.MainMenuView:
+	case ui.MainMenuView:
 		cmd = updatePtr(&m.mainMenu, msg, views.NewMainMenuModel)
-	case models.LogVideoView:
+	case ui.LogVideoView:
 		cmd = updatePtr(&m.logVideo, msg, func() views.LogVideoModel { return views.NewLogVideoModel("") })
-	case models.LogListView:
+	case ui.LogListView:
 		cmd = updatePtr(&m.logList, msg, views.NewLogListModel)
-	case models.LogDetailsView:
+	case ui.LogDetailsView:
 		cmd = updatePtr(&m.logDetails, msg, func() views.LogDetailsModel { return views.NewLogDetailsModel("") })
-	case models.SettingsView:
+	case ui.SettingsView:
 		cmd = updatePtr(&m.settings, msg, func() views.SettingsModel { return views.NewSettingsModel(0) })
-	case models.StatsView:
+	case ui.StatsView:
 		cmd = updatePtr(&m.stats, msg, views.NewStatsModel)
-	case models.BackupView:
+	case ui.BackupView:
 		cmd = updatePtr(&m.backup, msg, views.NewBackupModel)
 	}
 
@@ -228,31 +227,31 @@ func (m Model) View() string {
 	var content string
 
 	switch m.currentView {
-	case models.MainMenuView:
+	case ui.MainMenuView:
 		if m.mainMenu != nil {
 			content = m.mainMenu.View()
 		}
-	case models.LogVideoView:
+	case ui.LogVideoView:
 		if m.logVideo != nil {
 			content = m.logVideo.View()
 		}
-	case models.LogListView:
+	case ui.LogListView:
 		if m.logList != nil {
 			content = m.logList.View()
 		}
-	case models.LogDetailsView:
+	case ui.LogDetailsView:
 		if m.logDetails != nil {
 			content = m.logDetails.View()
 		}
-	case models.SettingsView:
+	case ui.SettingsView:
 		if m.settings != nil {
 			content = m.settings.View()
 		}
-	case models.StatsView:
+	case ui.StatsView:
 		if m.stats != nil {
 			content = m.stats.View()
 		}
-	case models.BackupView:
+	case ui.BackupView:
 		if m.backup != nil {
 			content = m.backup.View()
 		}
@@ -274,11 +273,11 @@ func Run() error {
 	views.LoadAndApplySettings()
 
 	m := Model{
-		currentView: models.MainMenuView,
-		currentRoute: models.Route{
-			View: models.MainMenuView,
+		currentView: ui.MainMenuView,
+		currentRoute: ui.Route{
+			View: ui.MainMenuView,
 		},
-		history:  []models.Route{},
+		history:  []ui.Route{},
 		mainMenu: func() *views.MainMenuModel { mm := views.NewMainMenuModel(); return &mm }(),
 		logVideo: func() *views.LogVideoModel { lv := views.NewLogVideoModel(""); return &lv }(),
 		settings: func() *views.SettingsModel { s := views.NewSettingsModel(0); return &s }(),

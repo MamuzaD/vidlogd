@@ -13,7 +13,7 @@ import (
 	"github.com/charmbracelet/bubbles/spinner"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
-	"github.com/mamuzad/vidlogd/internal/models"
+	"github.com/mamuzad/vidlogd/internal/storage"
 	"github.com/mamuzad/vidlogd/internal/ui"
 )
 
@@ -135,7 +135,7 @@ func (m BackupModel) Update(msg tea.Msg) (BackupModel, tea.Cmd) {
 	case tea.KeyMsg:
 		if key.Matches(msg, ui.GlobalKeyMap.Back) {
 			return m, func() tea.Msg {
-				return models.NavigateMsg{View: models.MainMenuView}
+				return ui.NavigateMsg{View: ui.MainMenuView}
 			}
 		}
 		if key.Matches(msg, ui.GlobalKeyMap.Select, ui.GlobalKeyMap.Right) {
@@ -175,9 +175,9 @@ func (m BackupModel) handleSelection() (BackupModel, tea.Cmd) {
 		return m, m.openGitToolsCmd()
 	case SyncOpenSettings:
 		return m, func() tea.Msg {
-			return models.NavigateMsg{
-				View:  models.SettingsView,
-				State: models.SettingsRouteState{ListIndex: int(BackupRepoEditor)},
+			return ui.NavigateMsg{
+				View:  ui.SettingsView,
+				State: ui.SettingsRouteState{ListIndex: int(BackupRepoEditor)},
 			}
 		}
 	}
@@ -259,7 +259,7 @@ func (m BackupModel) openGitToolsCmd() tea.Cmd {
 }
 
 func renderBackupPath() string {
-	dataDir, err := models.DataDir()
+	dataDir, err := storage.DataDir()
 	if err != nil {
 		return "unknown"
 	}

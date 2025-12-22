@@ -601,7 +601,7 @@ func (m StatsModel) Update(msg tea.Msg) (StatsModel, tea.Cmd) {
 		case m.focusedSearch == 2: // channel select
 			// allow backing out without stealing 'q' from the title search input
 			if key.Matches(msg, ui.GlobalKeyMap.Back) {
-				return m, func() tea.Msg { return models.BackMsg{} }
+				return m, func() tea.Msg { return ui.BackMsg{} }
 			}
 			// ignore left right
 			if key.Matches(msg, ui.GlobalKeyMap.Left) || key.Matches(msg, ui.GlobalKeyMap.Right) {
@@ -614,7 +614,7 @@ func (m StatsModel) Update(msg tea.Msg) (StatsModel, tea.Cmd) {
 		case m.focusedSearch == 0: // chart view
 			switch {
 			case key.Matches(msg, ui.GlobalKeyMap.Back, ui.GlobalKeyMap.Cancel):
-				return m, func() tea.Msg { return models.BackMsg{} }
+				return m, func() tea.Msg { return ui.BackMsg{} }
 			case key.Matches(msg, ui.GlobalKeyMap.Left): // switch between chart views
 				m.viewMode = m.cycleField(&m.viewMode, false, 3)
 			case key.Matches(msg, ui.GlobalKeyMap.Right):
@@ -635,7 +635,7 @@ func (m StatsModel) Update(msg tea.Msg) (StatsModel, tea.Cmd) {
 						selectedItem := m.videoList.SelectedItem()
 						if videoItem, ok := selectedItem.(VideoItem); ok {
 							return m, func() tea.Msg {
-								return models.NavigateMsg{View: models.LogVideoView, State: models.VideoRouteState{VideoID: videoItem.video.ID}}
+								return ui.NavigateMsg{View: ui.LogVideoView, State: ui.VideoRouteState{VideoID: videoItem.video.ID}}
 							}
 						}
 					}
@@ -776,7 +776,7 @@ func (m StatsModel) handleVideoSelection() (StatsModel, tea.Cmd) {
 	selectedItem := m.videoList.SelectedItem()
 	if videoItem, ok := selectedItem.(VideoItem); ok {
 		return m, func() tea.Msg {
-			return models.NavigateMsg{View: models.LogDetailsView, State: models.VideoRouteState{VideoID: videoItem.video.ID}}
+			return ui.NavigateMsg{View: ui.LogDetailsView, State: ui.VideoRouteState{VideoID: videoItem.video.ID}}
 		}
 	}
 	return m, nil

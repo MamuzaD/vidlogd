@@ -7,7 +7,6 @@ import (
 	"github.com/charmbracelet/bubbles/key"
 	"github.com/charmbracelet/bubbles/list"
 	tea "github.com/charmbracelet/bubbletea"
-	"github.com/mamuzad/vidlogd/internal/models"
 	"github.com/mamuzad/vidlogd/internal/ui"
 )
 
@@ -101,23 +100,23 @@ func (m MainMenuModel) handleSelection() (MainMenuModel, tea.Cmd) {
 	switch selectedItem.title {
 	case "log video":
 		return m, func() tea.Msg {
-			return models.NavigateMsg{View: models.LogVideoView}
+			return ui.NavigateMsg{View: ui.LogVideoView}
 		}
 	case "view logs":
 		return m, func() tea.Msg {
-			return models.NavigateMsg{View: models.LogListView}
+			return ui.NavigateMsg{View: ui.LogListView}
 		}
 	case "stats":
 		return m, func() tea.Msg {
-			return models.NavigateMsg{View: models.StatsView}
+			return ui.NavigateMsg{View: ui.StatsView}
 		}
 	case "sync":
 		return m, func() tea.Msg {
-			return models.NavigateMsg{View: models.BackupView}
+			return ui.NavigateMsg{View: ui.BackupView}
 		}
 	case "settings":
 		return m, func() tea.Msg {
-			return models.NavigateMsg{View: models.SettingsView}
+			return ui.NavigateMsg{View: ui.SettingsView}
 		}
 	case "exit":
 		return m, tea.Quit

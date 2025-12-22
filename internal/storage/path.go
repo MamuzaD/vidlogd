@@ -1,4 +1,4 @@
-package models
+package storage
 
 import (
 	"fmt"
@@ -7,6 +7,7 @@ import (
 	"runtime"
 )
 
+// DataDir returns the path to the application's data directory
 func DataDir() (string, error) {
 	var baseDir string
 
@@ -42,7 +43,8 @@ func DataDir() (string, error) {
 	return dataDir, nil
 }
 
-func VideosFilePath() (string, error) {
+// VideosPath returns the path to the videos file
+func VideosPath() (string, error) {
 	dataDir, err := DataDir()
 	if err != nil {
 		return "", err
@@ -50,7 +52,8 @@ func VideosFilePath() (string, error) {
 	return filepath.Join(dataDir, "videos.json"), nil
 }
 
-func SettingsFilePath() (string, error) {
+// SettingsPath returns the path to the settings file
+func SettingsPath() (string, error) {
 	dataDir, err := DataDir()
 	if err != nil {
 		return "", err

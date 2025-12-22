@@ -195,7 +195,7 @@ func (m LogListModel) Update(msg tea.Msg) (LogListModel, tea.Cmd) {
 			}
 			return m, nil
 		case key.Matches(msg, ui.GlobalKeyMap.Cancel):
-			return m, func() tea.Msg { return models.BackMsg{} }
+			return m, func() tea.Msg { return ui.BackMsg{} }
 		case m.focused:
 			// when search is focused, only handle search input
 			m.search, searchCmd = m.search.Update(msg)
@@ -203,16 +203,16 @@ func (m LogListModel) Update(msg tea.Msg) (LogListModel, tea.Cmd) {
 			m.updateTableRows()
 			return m, searchCmd
 		case key.Matches(msg, ui.GlobalKeyMap.Back):
-			return m, func() tea.Msg { return models.BackMsg{} }
+			return m, func() tea.Msg { return ui.BackMsg{} }
 		case key.Matches(msg, ui.GlobalKeyMap.Edit): // quick edit shortcut
 			if len(m.videos) > 0 {
 				selectedRow := m.table.Cursor()
 				if selectedRow < len(m.videos) {
 					videoToEdit := m.videos[selectedRow]
 					return m, func() tea.Msg {
-						return models.NavigateMsg{
-							View:  models.LogVideoView,
-							State: models.VideoRouteState{VideoID: videoToEdit.ID},
+						return ui.NavigateMsg{
+							View:  ui.LogVideoView,
+							State: ui.VideoRouteState{VideoID: videoToEdit.ID},
 						}
 					}
 				}
@@ -305,7 +305,7 @@ func (m LogListModel) handleSelection() (LogListModel, tea.Cmd) {
 	if selectedRow < len(m.videos) {
 		selectedVideo := m.videos[selectedRow]
 		return m, func() tea.Msg {
-			return models.NavigateMsg{View: models.LogDetailsView, State: models.VideoRouteState{VideoID: selectedVideo.ID}}
+			return ui.NavigateMsg{View: ui.LogDetailsView, State: ui.VideoRouteState{VideoID: selectedVideo.ID}}
 		}
 	}
 	return m, nil

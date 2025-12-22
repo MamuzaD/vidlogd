@@ -135,7 +135,7 @@ func (m LogDetailsModel) Update(msg tea.Msg) (LogDetailsModel, tea.Cmd) {
 			if err := models.DeleteVideo(targetID); err != nil {
 				return err
 			}
-			return models.BackMsg{}
+			return ui.BackMsg{}
 		}
 	case ui.DeleteCancelMsg:
 		return m, nil
@@ -156,9 +156,9 @@ func (m LogDetailsModel) Update(msg tea.Msg) (LogDetailsModel, tea.Cmd) {
 		case key.Matches(msg, ui.GlobalKeyMap.Edit): // quick edit shortcut
 			if m.video != nil {
 				return m, func() tea.Msg {
-					return models.NavigateMsg{
-						View:  models.LogVideoView,
-						State: models.VideoRouteState{VideoID: m.video.ID},
+					return ui.NavigateMsg{
+						View:  ui.LogVideoView,
+						State: ui.VideoRouteState{VideoID: m.video.ID},
 					}
 				}
 			}
@@ -177,9 +177,9 @@ func (m LogDetailsModel) Update(msg tea.Msg) (LogDetailsModel, tea.Cmd) {
 			case "edit":
 				if m.video != nil {
 					return m, func() tea.Msg {
-						return models.NavigateMsg{
-							View:  models.LogVideoView,
-							State: models.VideoRouteState{VideoID: m.video.ID},
+						return ui.NavigateMsg{
+							View:  ui.LogVideoView,
+							State: ui.VideoRouteState{VideoID: m.video.ID},
 						}
 					}
 				}
@@ -190,12 +190,12 @@ func (m LogDetailsModel) Update(msg tea.Msg) (LogDetailsModel, tea.Cmd) {
 				}
 			case "back":
 				return m, func() tea.Msg {
-					return models.BackMsg{}
+					return ui.BackMsg{}
 				}
 			}
 		case key.Matches(msg, ui.GlobalKeyMap.Back):
 			return m, func() tea.Msg {
-				return models.BackMsg{}
+				return ui.BackMsg{}
 			}
 		}
 	}

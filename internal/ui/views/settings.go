@@ -185,7 +185,7 @@ func (m SettingsModel) Update(msg tea.Msg) (SettingsModel, tea.Cmd) {
 	case tea.KeyMsg:
 		if key.Matches(msg, ui.GlobalKeyMap.Back, ui.GlobalKeyMap.Cancel) {
 			return m, func() tea.Msg {
-				return models.BackMsg{}
+				return ui.BackMsg{}
 			}
 		}
 		// let form handle select if active
@@ -236,9 +236,10 @@ func (m SettingsModel) cycleSetting() (SettingsModel, tea.Cmd) {
 	case ThemeSelector:
 		Settings.Theme = newValue
 		ApplyTheme(Settings.Theme)
-		cmd = func() tea.Msg { return models.UIRefreshMsg{} }
+		cmd = func() tea.Msg { return ui.UIRefreshMsg{} }
 	case AutoSyncToggle:
 		Settings.AutoSync = newValue == "enabled"
+		cmd = func() tea.Msg { return ui.UIRefreshMsg{} }
 	}
 
 	// save settings to file
@@ -276,7 +277,7 @@ func (m SettingsModel) handleSettingSelection() (SettingsModel, tea.Cmd) {
 		form := NewForm("YouTube API Key", fields, "save")
 		form.SetHandlers(
 			func(f FormModel) tea.Cmd {
-				apiKeyValue := f.GetValue(0)
+				apiKeyValue := f.Value(0)
 				Settings.APIKey = apiKeyValue
 				if err := models.SaveSettings(Settings); err != nil {
 					return func() tea.Msg { return ClearSettingsFormMsg{} }
@@ -306,7 +307,7 @@ func (m SettingsModel) handleSettingSelection() (SettingsModel, tea.Cmd) {
 		form := NewForm("Backup Repo", fields, "save")
 		form.SetHandlers(
 			func(f FormModel) tea.Cmd {
-				repoValue := strings.TrimSpace(f.GetValue(0))
+				repoValue := strings.TrimSpace(f.Value(0))
 				Settings.BackupRepo = repoValue
 				if err := models.SaveSettings(Settings); err != nil {
 					return func() tea.Msg { return ClearSettingsFormMsg{} }

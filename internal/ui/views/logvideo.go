@@ -4,6 +4,7 @@ import (
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/mamuzad/vidlogd/internal/models"
 	"github.com/mamuzad/vidlogd/internal/services"
+	"github.com/mamuzad/vidlogd/internal/ui"
 )
 
 type LogVideoModel struct {
@@ -29,34 +30,34 @@ func NewLogVideoModel(videoID string) LogVideoModel {
 			if editing {
 				// update existing video
 				if existingVideo != nil {
-					video := CreateVideoFromForm(f)
+					video := f.Video()
 					video.ID = existingVideo.ID // preserve the original ID
 
 					if err := models.UpdateVideo(video); err != nil {
 						// TODO: add errors ui
 					}
 				}
-				return func() tea.Msg { return models.BackMsg{} }
+				return func() tea.Msg { return ui.BackMsg{} }
 			} else {
 				// create new video
-				video := CreateVideoFromForm(f)
+				video := f.Video()
 				if err := models.SaveVideo(video); err != nil {
 					// TODO: add errors ui
 				}
 				// clear form by sending clear message then navigate
 				return tea.Batch(
-					func() tea.Msg { return models.ClearFormMsg{} },
-					func() tea.Msg { return models.BackMsg{} },
+					func() tea.Msg { return ui.ClearFormMsg{} },
+					func() tea.Msg { return ui.BackMsg{} },
 				)
 			}
 		},
 		func() tea.Cmd {
 			if editing {
 				// when editing, cancel without saving (reset)
-				return func() tea.Msg { return models.BackMsg{} }
+				return func() tea.Msg { return ui.BackMsg{} }
 			} else {
 				// when creating new, preserve form state and go back to main menu
-				return func() tea.Msg { return models.BackMsg{} }
+				return func() tea.Msg { return ui.BackMsg{} }
 			}
 		},
 	)

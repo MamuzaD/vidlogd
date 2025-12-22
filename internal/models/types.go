@@ -2,45 +2,6 @@ package models
 
 import "time"
 
-type ViewType int
-
-const (
-	MainMenuView ViewType = iota
-	LogVideoView
-	LogListView
-	LogDetailsView
-	SettingsView
-	StatsView
-	BackupView
-)
-
-type NavigateMsg struct {
-	View  ViewType
-	State any // arbitrary view state (route params)
-}
-
-type BackMsg struct{}
-
-// UIRefreshMsg is emitted when UI globals (theme/styles) change.
-type UIRefreshMsg struct{}
-
-type Route struct {
-	View  ViewType
-	State any
-}
-
-// -- route state payloads --
-
-type VideoRouteState struct {
-	VideoID string
-}
-
-type SettingsRouteState struct {
-	ListIndex int
-}
-
-type ClearFormMsg struct{}
-
 type Video struct {
 	ID          string    `json:"id"`
 	URL         string    `json:"url"`
@@ -68,7 +29,7 @@ var (
 	DateTimeFormat string = "2006-01-02 3:04 PM"
 )
 
-func DefaultSettings() AppSettings {
+func GetDefaultSettings() AppSettings {
 	return AppSettings{
 		VimMotions: true,
 		Theme:      "red",
