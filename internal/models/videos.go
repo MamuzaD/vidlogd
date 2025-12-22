@@ -73,22 +73,7 @@ func SaveVideo(video Video) error {
 	// sort videos by log date, most recent first
 	SortVideosByLogDate(videos)
 
-	// marshal for pretty json
-	data, err := json.MarshalIndent(videos, "", "  ")
-	if err != nil {
-		return fmt.Errorf("failed to marshal videos to JSON: %w", err)
-	}
-
-	videosPath, err := storage.VideosPath()
-	if err != nil {
-		return fmt.Errorf("failed to get videos file path: %w", err)
-	}
-
-	if err := storage.WriteFileAtomic(videosPath, data, 0o644); err != nil {
-		return fmt.Errorf("failed to write videos file: %w", err)
-	}
-
-	return nil
+	return saveAll(videos)
 }
 
 func UpdateVideo(updatedVideo Video) error {
@@ -114,22 +99,7 @@ func UpdateVideo(updatedVideo Video) error {
 	// sort videos by log date, most recent first
 	SortVideosByLogDate(videos)
 
-	// marshal for pretty json
-	data, err := json.MarshalIndent(videos, "", "  ")
-	if err != nil {
-		return fmt.Errorf("failed to marshal videos to JSON: %w", err)
-	}
-
-	videosPath, err := storage.VideosPath()
-	if err != nil {
-		return fmt.Errorf("failed to get videos file path: %w", err)
-	}
-
-	if err := storage.WriteFileAtomic(videosPath, data, 0o644); err != nil {
-		return fmt.Errorf("failed to write videos file: %w", err)
-	}
-
-	return nil
+	return saveAll(videos)
 }
 
 // CreateVideo creates a new video with the given data
@@ -188,22 +158,7 @@ func DeleteVideo(id string) error {
 		return fmt.Errorf("video with ID %s not found", id)
 	}
 
-	// marshal for pretty json
-	data, err := json.MarshalIndent(filteredVideos, "", "  ")
-	if err != nil {
-		return fmt.Errorf("failed to marshal videos to JSON: %w", err)
-	}
-
-	videosPath, err := storage.VideosPath()
-	if err != nil {
-		return fmt.Errorf("failed to get videos file path: %w", err)
-	}
-
-	if err := storage.WriteFileAtomic(videosPath, data, 0o644); err != nil {
-		return fmt.Errorf("failed to write videos file: %w", err)
-	}
-
-	return nil
+	return saveAll(filteredVideos)
 }
 
 func VideoCount(path string) (int, error) {
@@ -227,4 +182,19 @@ func VideoCount(path string) (int, error) {
 	}
 
 	return len(count), nil
+}
+
+func saveAll(videos []Video) error {
+	// marshal for pretty json
+	data, err := json.MarshalIndent(videos, "", "  ")
+	if err != nil {
+		return fmt.Errorf("failed to marshal videos to JSON: %w", err)
+	}
+
+	videosPath, err := storage.VideosPath()
+	if err != nil {
+		return fmt.Errorf("failed to get videos file path: %w", err)
+	}
+
+	return storage.WriteFileAtomic(videosPath, data, 0o644)
 }
