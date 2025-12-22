@@ -1,4 +1,4 @@
-package models
+package storage
 
 import (
 	"fmt"
@@ -7,7 +7,8 @@ import (
 	"runtime"
 )
 
-func getDataDir() (string, error) {
+// DataDir returns the path to the application's data directory
+func DataDir() (string, error) {
 	var baseDir string
 
 	// Follow XDG Base Directory Specification on Unix-like systems
@@ -42,29 +43,20 @@ func getDataDir() (string, error) {
 	return dataDir, nil
 }
 
-func getVideosFilePath() (string, error) {
-	dataDir, err := getDataDir()
+// VideosPath returns the path to the videos file
+func VideosPath() (string, error) {
+	dataDir, err := DataDir()
 	if err != nil {
 		return "", err
 	}
 	return filepath.Join(dataDir, "videos.json"), nil
 }
 
-// Get settings file path
-func getSettingsFilePath() (string, error) {
-	dataDir, err := getDataDir()
+// SettingsPath returns the path to the settings file
+func SettingsPath() (string, error) {
+	dataDir, err := DataDir()
 	if err != nil {
 		return "", err
 	}
 	return filepath.Join(dataDir, "settings.json"), nil
-}
-
-// Ensure settings directory exists
-func ensureSettingsDir() error {
-	settingsPath, err := getSettingsFilePath()
-	if err != nil {
-		return err
-	}
-	dir := filepath.Dir(settingsPath)
-	return os.MkdirAll(dir, 0755)
 }

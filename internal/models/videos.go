@@ -6,10 +6,10 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
-	"path/filepath"
-	"runtime"
 	"sort"
 	"time"
+
+	"github.com/mamuzad/vidlogd/internal/storage"
 )
 
 // SortVideosByLogDate sorts videos by log date, most recent first
@@ -30,7 +30,7 @@ func SortVideosByLogDate(videos []Video) {
 }
 
 func LoadVideos() ([]Video, error) {
-	videosPath, err := getVideosFilePath()
+	videosPath, err := storage.VideosPath()
 	if err != nil {
 		return nil, fmt.Errorf("failed to get videos file path: %w", err)
 	}
@@ -89,12 +89,12 @@ func SaveVideo(video Video) error {
 		return fmt.Errorf("failed to marshal videos to JSON: %w", err)
 	}
 
-	videosPath, err := getVideosFilePath()
+	videosPath, err := storage.VideosPath()
 	if err != nil {
 		return fmt.Errorf("failed to get videos file path: %w", err)
 	}
 
-	if err := WriteFileAtomic(videosPath, data, 0o644); err != nil {
+	if err := storage.WriteFileAtomic(videosPath, data, 0o644); err != nil {
 		return fmt.Errorf("failed to write videos file: %w", err)
 	}
 
@@ -130,12 +130,12 @@ func UpdateVideo(updatedVideo Video) error {
 		return fmt.Errorf("failed to marshal videos to JSON: %w", err)
 	}
 
-	videosPath, err := getVideosFilePath()
+	videosPath, err := storage.VideosPath()
 	if err != nil {
 		return fmt.Errorf("failed to get videos file path: %w", err)
 	}
 
-	if err := WriteFileAtomic(videosPath, data, 0o644); err != nil {
+	if err := storage.WriteFileAtomic(videosPath, data, 0o644); err != nil {
 		return fmt.Errorf("failed to write videos file: %w", err)
 	}
 
@@ -200,120 +200,14 @@ func DeleteVideo(id string) error {
 		return fmt.Errorf("failed to marshal videos to JSON: %w", err)
 	}
 
-	videosPath, err := getVideosFilePath()
+	videosPath, err := storage.VideosPath()
 	if err != nil {
 		return fmt.Errorf("failed to get videos file path: %w", err)
 	}
 
-	if err := WriteFileAtomic(videosPath, data, 0o644); err != nil {
+	if err := storage.WriteFileAtomic(videosPath, data, 0o644); err != nil {
 		return fmt.Errorf("failed to write videos file: %w", err)
 	}
 
 	return nil
-}
-
-// ============================= settings =============================
-func LoadSettings() AppSettings {
-	settingsPath, err := getSettingsFilePath()
-	if err != nil {
-		// error getting settings path, return defaults
-		return GetDefaultSettings()
-	}
-
-	if _, err := os.Stat(settingsPath); os.IsNotExist(err) {
-		// file doesn't exist, create w/ default
-		defaults := GetDefaultSettings()
-		SaveSettings(defaults)
-		return defaults
-	}
-
-	data, err := os.ReadFile(settingsPath)
-	if err != nil {
-		return GetDefaultSettings()
-	}
-
-	var settings AppSettings
-	if err := json.Unmarshal(data, &settings); err != nil {
-		return GetDefaultSettings()
-	}
-
-	return settings
-}
-
-// save settings to file
-func SaveSettings(settings AppSettings) error {
-	if err := ensureSettingsDir(); err != nil {
-		return err
-	}
-
-	settingsPath, err := getSettingsFilePath()
-	if err != nil {
-		return err
-	}
-	data, err := json.MarshalIndent(settings, "", "  ")
-	if err != nil {
-		return err
-	}
-
-	return WriteFileAtomic(settingsPath, data, 0o644)
-}
-
-func WriteFileAtomic(path string, data []byte, perm os.FileMode) (retErr error) {
-	dir := filepath.Dir(path)
-	if err := os.MkdirAll(dir, 0755); err != nil {
-		return fmt.Errorf("creating directory: %w", err)
-	}
-
-	f, err := os.CreateTemp(dir, "tmp-"+filepath.Base(path))
-	if err != nil {
-		return fmt.Errorf("creating temp file: %w", err)
-	}
-
-	tmpName := f.Name()
-	defer func() {
-		if retErr != nil {
-			_ = os.Remove(tmpName)
-		}
-	}()
-
-	if err := f.Chmod(perm); err != nil {
-		return fmt.Errorf("setting permissions: %w", err)
-	}
-
-	if _, err := f.Write(data); err != nil {
-		return fmt.Errorf("writing data: %w", err)
-	}
-
-	if err := f.Sync(); err != nil {
-		return fmt.Errorf("syncing file: %w", err)
-	}
-
-	if err := f.Close(); err != nil {
-		return fmt.Errorf("closing temp file: %w", err)
-	}
-
-	if err := atomicRename(tmpName, path); err != nil {
-		return fmt.Errorf("renaming: %w", err)
-	}
-
-	if runtime.GOOS != "windows" {
-		df, err := os.Open(dir)
-		if err != nil {
-			return fmt.Errorf("opening directory for sync: %w", err)
-		}
-
-		defer df.Close()
-		if err := df.Sync(); err != nil {
-			return fmt.Errorf("syncing directory: %w", err)
-		}
-	}
-
-	return nil
-}
-
-func atomicRename(tmpName, path string) error {
-	if runtime.GOOS == "windows" {
-		_ = os.Remove(path)
-	}
-	return os.Rename(tmpName, path)
 }
