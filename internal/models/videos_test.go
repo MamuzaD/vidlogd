@@ -39,7 +39,7 @@ func TestVideoLifecycle_SaveUpdateDelete(t *testing.T) {
 	}
 
 	// --- Check count before anything exists
-	count, _ := VideoCount(videosPath)
+	count, _ := VideoCount()
 	if count != 0 {
 		t.Errorf("expected 0 videos initially, got %d", count)
 	}
@@ -53,7 +53,7 @@ func TestVideoLifecycle_SaveUpdateDelete(t *testing.T) {
 	}
 
 	// -- Verify VideoCount sees 2 videos on disk
-	count, err = VideoCount(videosPath)
+	count, err = VideoCount()
 	if err != nil {
 		t.Fatalf("VideoCount error: %v", err)
 	}
@@ -93,7 +93,7 @@ func TestVideoLifecycle_SaveUpdateDelete(t *testing.T) {
 	}
 
 	//  Verify VideoCount drops to 1
-	count, _ = VideoCount(videosPath)
+	count, _ = VideoCount()
 	if count != 1 {
 		t.Errorf("expected 1 video after delete, got %d", count)
 	}
