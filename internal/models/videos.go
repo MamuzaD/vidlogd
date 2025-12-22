@@ -15,17 +15,7 @@ import (
 // SortVideosByLogDate sorts videos by log date, most recent first
 func SortVideosByLogDate(videos []Video) {
 	sort.Slice(videos, func(i, j int) bool {
-		// parse log dates for comparison
-		dateI, errI := time.Parse(DateTimeFormat, videos[i].LogDate)
-		dateJ, errJ := time.Parse(DateTimeFormat, videos[j].LogDate)
-
-		// if either date fails to parse, fall back to creation time
-		if errI != nil || errJ != nil {
-			return videos[i].CreatedAt.After(videos[j].CreatedAt)
-		}
-
-		// sort by log date, most recent first
-		return dateI.After(dateJ)
+		return videos[i].LogDate.After(videos[j].LogDate)
 	})
 }
 
@@ -35,14 +25,12 @@ func LoadVideos() ([]Video, error) {
 		return nil, fmt.Errorf("failed to get videos file path: %w", err)
 	}
 
-	if _, err := os.Stat(videosPath); os.IsNotExist(err) {
-		// file doesn't exist
-		return []Video{}, nil
-	}
-
-	// read file
 	data, err := os.ReadFile(videosPath)
 	if err != nil {
+		if os.IsNotExist(err) {
+			// file doesn't exist
+			return []Video{}, nil
+		}
 		return nil, fmt.Errorf("failed to read videos file: %w", err)
 	}
 
@@ -54,9 +42,6 @@ func LoadVideos() ([]Video, error) {
 	if err := json.Unmarshal(data, &videos); err != nil {
 		return nil, fmt.Errorf("failed to parse videos file: %w", err)
 	}
-
-	// sort videos by log date, most recent first
-	SortVideosByLogDate(videos)
 
 	return videos, nil
 }
@@ -80,25 +65,7 @@ func SaveVideo(video Video) error {
 
 	videos = append(videos, video)
 
-	// sort videos by log date, most recent first
-	SortVideosByLogDate(videos)
-
-	// marshal for pretty json
-	data, err := json.MarshalIndent(videos, "", "  ")
-	if err != nil {
-		return fmt.Errorf("failed to marshal videos to JSON: %w", err)
-	}
-
-	videosPath, err := storage.VideosPath()
-	if err != nil {
-		return fmt.Errorf("failed to get videos file path: %w", err)
-	}
-
-	if err := storage.WriteFileAtomic(videosPath, data, 0o644); err != nil {
-		return fmt.Errorf("failed to write videos file: %w", err)
-	}
-
-	return nil
+	return saveAll(videos)
 }
 
 func UpdateVideo(updatedVideo Video) error {
@@ -107,43 +74,29 @@ func UpdateVideo(updatedVideo Video) error {
 		return fmt.Errorf("failed to load existing videos: %w", err)
 	}
 
-	existingVideo, err := FindVideoByID(updatedVideo.ID)
-	if err != nil {
-		return err
-	}
-
-	updatedVideo.CreatedAt = existingVideo.CreatedAt
-
-	for i, video := range videos {
-		if video.ID == updatedVideo.ID {
+	found := false
+	for i := range videos {
+		if videos[i].ID == updatedVideo.ID {
+			updatedVideo.CreatedAt = videos[i].CreatedAt
 			videos[i] = updatedVideo
+			found = true
 			break
 		}
 	}
-
-	// sort videos by log date, most recent first
-	SortVideosByLogDate(videos)
-
-	// marshal for pretty json
-	data, err := json.MarshalIndent(videos, "", "  ")
-	if err != nil {
-		return fmt.Errorf("failed to marshal videos to JSON: %w", err)
+	if !found {
+		return fmt.Errorf("video with ID %s not found", updatedVideo.ID)
 	}
 
-	videosPath, err := storage.VideosPath()
-	if err != nil {
-		return fmt.Errorf("failed to get videos file path: %w", err)
-	}
-
-	if err := storage.WriteFileAtomic(videosPath, data, 0o644); err != nil {
-		return fmt.Errorf("failed to write videos file: %w", err)
-	}
-
-	return nil
+	return saveAll(videos)
 }
 
 // CreateVideo creates a new video with the given data
-func CreateVideo(url, title, channel, releaseDate, logDate, review string, rewatched bool, rating float64) Video {
+func CreateVideo(url, title, channel, releaseDate, logDateStr, review string, rewatched bool, rating float64) Video {
+	logDate, err := time.Parse(DateTimeFormat, logDateStr)
+	if err != nil {
+		panic(fmt.Sprintf("failed to parse logDate '%s' with layout '%s': %v", logDateStr, DateTimeFormat, err))
+	}
+
 	return Video{
 		ID:          generateVideoID(),
 		URL:         url,
@@ -164,12 +117,11 @@ func FindVideoByID(id string) (*Video, error) {
 		return nil, err
 	}
 
-	for _, video := range videos {
-		if video.ID == id {
-			return &video, nil
+	for i := range videos {
+		if videos[i].ID == id {
+			return &videos[i], nil
 		}
 	}
-
 	return nil, fmt.Errorf("video with ID %s not found", id)
 }
 
@@ -180,7 +132,7 @@ func DeleteVideo(id string) error {
 	}
 
 	// filter out the video with the specified ID
-	filteredVideos := make([]Video, 0, len(videos))
+	filteredVideos := videos[:0]
 	found := false
 	for _, video := range videos {
 		if video.ID != id {
@@ -194,8 +146,20 @@ func DeleteVideo(id string) error {
 		return fmt.Errorf("video with ID %s not found", id)
 	}
 
+	return saveAll(filteredVideos)
+}
+
+func VideoCount() (int, error) {
+	videos, err := LoadVideos()
+	return len(videos), err
+}
+
+func saveAll(videos []Video) error {
+	// sort videos by log date, most recent first
+	SortVideosByLogDate(videos)
+
 	// marshal for pretty json
-	data, err := json.MarshalIndent(filteredVideos, "", "  ")
+	data, err := json.MarshalIndent(videos, "", "  ")
 	if err != nil {
 		return fmt.Errorf("failed to marshal videos to JSON: %w", err)
 	}
@@ -205,9 +169,5 @@ func DeleteVideo(id string) error {
 		return fmt.Errorf("failed to get videos file path: %w", err)
 	}
 
-	if err := storage.WriteFileAtomic(videosPath, data, 0o644); err != nil {
-		return fmt.Errorf("failed to write videos file: %w", err)
-	}
-
-	return nil
+	return storage.WriteFileAtomic(videosPath, data, 0o644)
 }

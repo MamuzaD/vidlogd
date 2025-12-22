@@ -274,14 +274,9 @@ func (m *LogListModel) updateTableRows() {
 			}
 		}
 
-		logDate := video.LogDate
-		// add a leading space if the hour is a single digit.
-		colon := 12
-		hour := 10
-		if logDate == "" {
+		logDate := video.LogDate.Format(models.DateTimeFormat)
+		if video.LogDate.IsZero() {
 			logDate = "No date"
-		} else if len(logDate) > 1 && logDate[colon] == ':' {
-			logDate = logDate[0:hour] + " " + logDate[hour:]
 		}
 
 		rows[i] = table.Row{title, channel, ratingStr, logDate}

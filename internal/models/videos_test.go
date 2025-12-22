@@ -1,23 +1,12 @@
 package models
 
 import (
-	"encoding/json"
-	"os"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/mamuzad/vidlogd/internal/storage"
 )
-
-// helper to read file content as string
-func readFileString(t *testing.T, path string) string {
-	t.Helper()
-	b, err := os.ReadFile(path)
-	if err != nil {
-		t.Fatalf("ReadFile(%q): %v", path, err)
-	}
-	return string(b)
-}
 
 func TestVideoLifecycle_SaveUpdateDelete(t *testing.T) {
 	xdg := t.TempDir()
@@ -31,19 +20,28 @@ func TestVideoLifecycle_SaveUpdateDelete(t *testing.T) {
 		t.Fatalf("expected videos path inside %q, got %q", xdg, videosPath)
 	}
 
+	t1, _ := time.Parse(DateTimeFormat, "2025-01-01 1:00 PM")
+	t2, _ := time.Parse(DateTimeFormat, "2025-01-02 1:00 PM")
+
 	v1 := Video{
 		ID:      "v1",
 		URL:     "https://example.com/1",
 		Title:   "one",
-		LogDate: "2025-01-01 1:00 PM",
+		LogDate: t1,
 		Rating:  4.5,
 	}
 	v2 := Video{
 		ID:      "v2",
 		URL:     "https://example.com/2",
 		Title:   "two",
-		LogDate: "2025-01-02 1:00 PM",
+		LogDate: t2,
 		Rating:  5,
+	}
+
+	// --- Check count before anything exists
+	count, _ := VideoCount()
+	if count != 0 {
+		t.Errorf("expected 0 videos initially, got %d", count)
 	}
 
 	// --- Save two videos
@@ -54,13 +52,13 @@ func TestVideoLifecycle_SaveUpdateDelete(t *testing.T) {
 		t.Fatalf("SaveVideo(v2): %v", err)
 	}
 
-	raw := readFileString(t, videosPath)
-	var onDisk []Video
-	if err := json.Unmarshal([]byte(raw), &onDisk); err != nil {
-		t.Fatalf("invalid JSON: %v\nraw:\n%s", err, raw)
+	// -- Verify VideoCount sees 2 videos on disk
+	count, err = VideoCount()
+	if err != nil {
+		t.Fatalf("VideoCount error: %v", err)
 	}
-	if len(onDisk) != 2 {
-		t.Fatalf("expected 2 videos, got %d", len(onDisk))
+	if count != 2 {
+		t.Errorf("expected 2 videos on disk, got %d", count)
 	}
 
 	// --- Load & verify order
@@ -94,11 +92,28 @@ func TestVideoLifecycle_SaveUpdateDelete(t *testing.T) {
 		t.Fatalf("DeleteVideo: %v", err)
 	}
 
-	remaining, err := LoadVideos()
-	if err != nil {
-		t.Fatalf("LoadVideos after delete: %v", err)
+	//  Verify VideoCount drops to 1
+	count, _ = VideoCount()
+	if count != 1 {
+		t.Errorf("expected 1 video after delete, got %d", count)
 	}
-	if len(remaining) != 1 || remaining[0].ID != "v1" {
-		t.Fatalf("unexpected remaining videos: %+v", remaining)
+	loaded, err = LoadVideos()
+	if err != nil {
+		t.Fatalf("LoadVideos: %v", err)
+	}
+	if loaded[0].ID != "v1" {
+		t.Fatalf("expected v1 first, got %s", loaded[0].ID)
+	}
+
+	// Test finding a non-existent ID
+	_, err = FindVideoByID("non-existent")
+	if err == nil {
+		t.Error("expected error when finding non-existent ID, got nil")
+	}
+
+	// Test deleting a non-existent ID
+	err = DeleteVideo("non-existent")
+	if err == nil {
+		t.Error("expected error when deleting non-existent ID, got nil")
 	}
 }
