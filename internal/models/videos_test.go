@@ -3,6 +3,7 @@ package models
 import (
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/mamuzad/vidlogd/internal/storage"
 )
@@ -19,18 +20,21 @@ func TestVideoLifecycle_SaveUpdateDelete(t *testing.T) {
 		t.Fatalf("expected videos path inside %q, got %q", xdg, videosPath)
 	}
 
+	t1, _ := time.Parse(DateTimeFormat, "2025-01-01 1:00 PM")
+	t2, _ := time.Parse(DateTimeFormat, "2025-01-02 1:00 PM")
+
 	v1 := Video{
 		ID:      "v1",
 		URL:     "https://example.com/1",
 		Title:   "one",
-		LogDate: "2025-01-01 1:00 PM",
+		LogDate: t1,
 		Rating:  4.5,
 	}
 	v2 := Video{
 		ID:      "v2",
 		URL:     "https://example.com/2",
 		Title:   "two",
-		LogDate: "2025-01-02 1:00 PM",
+		LogDate: t2,
 		Rating:  5,
 	}
 

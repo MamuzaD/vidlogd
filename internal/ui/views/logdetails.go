@@ -236,7 +236,7 @@ func (m LogDetailsModel) View() string {
 	s.WriteString("URL: " + m.video.URL + "\n\n")
 	s.WriteString("Release Date: " + m.video.ReleaseDate + "\n\n")
 
-	s.WriteString("Date Logged: " + m.video.LogDate + "\n\n")
+	s.WriteString("Date Logged: " + m.video.LogDate.Format(models.DateTimeFormat) + "\n\n")
 	var rewatched string
 	if m.video.Rewatched {
 		rewatched = "  rewatched"

@@ -15,17 +15,7 @@ import (
 // SortVideosByLogDate sorts videos by log date, most recent first
 func SortVideosByLogDate(videos []Video) {
 	sort.Slice(videos, func(i, j int) bool {
-		// parse log dates for comparison
-		dateI, errI := time.Parse(DateTimeFormat, videos[i].LogDate)
-		dateJ, errJ := time.Parse(DateTimeFormat, videos[j].LogDate)
-
-		// if either date fails to parse, fall back to creation time
-		if errI != nil || errJ != nil {
-			return videos[i].CreatedAt.After(videos[j].CreatedAt)
-		}
-
-		// sort by log date, most recent first
-		return dateI.After(dateJ)
+		return videos[i].LogDate.After(videos[j].LogDate)
 	})
 }
 
@@ -143,7 +133,12 @@ func UpdateVideo(updatedVideo Video) error {
 }
 
 // CreateVideo creates a new video with the given data
-func CreateVideo(url, title, channel, releaseDate, logDate, review string, rewatched bool, rating float64) Video {
+func CreateVideo(url, title, channel, releaseDate, logDateStr, review string, rewatched bool, rating float64) Video {
+	logDate, err := time.Parse(DateTimeFormat, logDateStr)
+	if err != nil {
+		panic(err)
+	}
+
 	return Video{
 		ID:          generateVideoID(),
 		URL:         url,

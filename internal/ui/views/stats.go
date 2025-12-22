@@ -289,11 +289,9 @@ func (m *StatsModel) calculateStats() (
 		}
 
 		// month stats
-		if video.LogDate != "" {
-			if logTime, err := time.Parse(models.DateTimeFormat, video.LogDate); err == nil {
-				monthKey := logTime.Format(models.MonthFormat)
-				monthMap[monthKey]++
-			}
+		if !video.LogDate.IsZero() {
+			monthKey := video.LogDate.Format(models.MonthFormat)
+			monthMap[monthKey]++
 		}
 	}
 
@@ -360,17 +358,11 @@ func (m *StatsModel) getStreaks() (StreakInfo, StreakInfo) {
 	}
 
 	for _, video := range videosToUse {
-		if video.LogDate == "" {
+		if !video.LogDate.IsZero() {
 			continue
 		}
-
-		logTime, err := time.Parse(models.DateTimeFormat, video.LogDate)
-		if err != nil {
-			continue
-		}
-
 		// truncate to date for comparison
-		logDate := logTime.Truncate(24 * time.Hour)
+		logDate := video.LogDate.Truncate(24 * time.Hour)
 
 		// date exists already
 		if len(dateGroups) > 0 && dateGroups[len(dateGroups)-1].date.Equal(logDate) {
