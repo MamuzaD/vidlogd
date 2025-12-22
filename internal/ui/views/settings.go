@@ -239,7 +239,7 @@ func (m SettingsModel) handleSettingSelection() (SettingsModel, tea.Cmd) {
 		form := NewForm("YouTube API Key", fields, "save")
 		form.SetHandlers(
 			func(f FormModel) tea.Cmd {
-				apiKeyValue := f.GetValue(0)
+				apiKeyValue := f.Value(0)
 				Settings.APIKey = apiKeyValue
 				if err := models.SaveSettings(Settings); err != nil {
 					// TODO: handle error

@@ -29,7 +29,7 @@ func NewLogVideoModel(videoID string) LogVideoModel {
 			if editing {
 				// update existing video
 				if existingVideo != nil {
-					video := CreateVideoFromForm(f)
+					video := f.Video()
 					video.ID = existingVideo.ID // preserve the original ID
 
 					if err := models.UpdateVideo(video); err != nil {
@@ -39,7 +39,7 @@ func NewLogVideoModel(videoID string) LogVideoModel {
 				return func() tea.Msg { return models.BackMsg{} }
 			} else {
 				// create new video
-				video := CreateVideoFromForm(f)
+				video := f.Video()
 				if err := models.SaveVideo(video); err != nil {
 					// TODO: add errors ui
 				}
