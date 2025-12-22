@@ -164,12 +164,11 @@ func FindVideoByID(id string) (*Video, error) {
 		return nil, err
 	}
 
-	for _, video := range videos {
-		if video.ID == id {
-			return &video, nil
+	for i := range videos {
+		if videos[i].ID == id {
+			return &videos[i], nil
 		}
 	}
-
 	return nil, fmt.Errorf("video with ID %s not found", id)
 }
 
@@ -210,4 +209,27 @@ func DeleteVideo(id string) error {
 	}
 
 	return nil
+}
+
+func VideoCount(path string) (int, error) {
+	file, err := os.Open(path)
+	if err != nil {
+		if os.IsNotExist(err) {
+			return 0, nil
+		}
+		return 0, fmt.Errorf("failed to open video file: %w", err)
+	}
+	defer file.Close()
+
+	info, err := file.Stat()
+	if err != nil || info.Size() == 0 {
+		return 0, nil
+	}
+
+	var count []struct{}
+	if err := json.NewDecoder(file).Decode(&count); err != nil {
+		return 0, fmt.Errorf("failed to parse video count: %w", err)
+	}
+
+	return len(count), nil
 }
