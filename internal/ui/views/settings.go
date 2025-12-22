@@ -151,7 +151,7 @@ func (m SettingsModel) Update(msg tea.Msg) (SettingsModel, tea.Cmd) {
 	case tea.KeyMsg:
 		if key.Matches(msg, ui.GlobalKeyMap.Back, ui.GlobalKeyMap.Cancel) {
 			return m, func() tea.Msg {
-				return models.BackMsg{}
+				return ui.BackMsg{}
 			}
 		}
 		// let form handle select if active
@@ -202,7 +202,7 @@ func (m SettingsModel) cycleSetting() (SettingsModel, tea.Cmd) {
 	case ThemeSelector:
 		Settings.Theme = newValue
 		ApplyTheme(Settings.Theme)
-		cmd = func() tea.Msg { return models.UIRefreshMsg{} }
+		cmd = func() tea.Msg { return ui.UIRefreshMsg{} }
 	}
 
 	// save settings to file
