@@ -60,14 +60,14 @@ func (d SyncActionItemDelegate) Render(w io.Writer, m list.Model, index int, lis
 	fmt.Fprint(w, line1+"\n"+line2)
 }
 
-type BackupModel struct {
+type SyncModel struct {
 	list      list.Model
 	state     SyncState
 	statusMsg string
 	spinner   spinner.Model
 }
 
-func NewBackupModel() BackupModel {
+func NewSyncModel() SyncModel {
 	items := []list.Item{
 		SyncActionItem{
 			actionType:  SyncViewStatus,
@@ -103,7 +103,7 @@ func NewBackupModel() BackupModel {
 	l.SetShowTitle(false)
 	l.SetShowHelp(true)
 
-	return BackupModel{
+	return SyncModel{
 		list:      l,
 		spinner:   s,
 		state:     SyncIdle,
@@ -111,11 +111,11 @@ func NewBackupModel() BackupModel {
 	}
 }
 
-func (m BackupModel) Init() tea.Cmd {
+func (m SyncModel) Init() tea.Cmd {
 	return m.spinner.Tick
 }
 
-func (m BackupModel) Update(msg tea.Msg) (BackupModel, tea.Cmd) {
+func (m SyncModel) Update(msg tea.Msg) (SyncModel, tea.Cmd) {
 	var cmd tea.Cmd
 
 	switch msg := msg.(type) {
@@ -153,7 +153,7 @@ func (m BackupModel) Update(msg tea.Msg) (BackupModel, tea.Cmd) {
 	return m, tea.Batch(cmds...)
 }
 
-func (m BackupModel) handleSelection() (BackupModel, tea.Cmd) {
+func (m SyncModel) handleSelection() (SyncModel, tea.Cmd) {
 	selectedItem, ok := m.list.SelectedItem().(SyncActionItem)
 	if !ok {
 		return m, nil
@@ -185,7 +185,7 @@ func (m BackupModel) handleSelection() (BackupModel, tea.Cmd) {
 	return m, nil
 }
 
-func (m BackupModel) View() string {
+func (m SyncModel) View() string {
 	header := ui.HeaderStyle.Render("sync & backup")
 
 	repoLine := fmt.Sprintf("󰊢 repo: %s", renderBackupRepo())
@@ -246,15 +246,15 @@ type SyncStatusMsg struct {
 	Message string
 }
 
-func (m BackupModel) getBackupStatusCmd() tea.Msg {
+func (m SyncModel) getBackupStatusCmd() tea.Msg {
 	return SyncStatusMsg{State: SyncIdle, Message: "not implemented"}
 }
 
-func (m BackupModel) performSmartSyncCmd() tea.Msg {
+func (m SyncModel) performSmartSyncCmd() tea.Msg {
 	return SyncStatusMsg{State: SyncSuccess, Message: "todo: sync completed successfully"}
 }
 
-func (m BackupModel) openGitToolsCmd() tea.Cmd {
+func (m SyncModel) openGitToolsCmd() tea.Cmd {
 	return tea.Cmd(func() tea.Msg { return SyncStatusMsg{State: SyncError, Message: "todo: open lazygit or git"} })
 }
 

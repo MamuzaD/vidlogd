@@ -9,7 +9,7 @@ const (
 	LogDetailsView
 	SettingsView
 	StatsView
-	BackupView
+	SyncView
 )
 
 type Route struct {

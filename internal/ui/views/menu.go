@@ -112,7 +112,7 @@ func (m MainMenuModel) handleSelection() (MainMenuModel, tea.Cmd) {
 		}
 	case "sync":
 		return m, func() tea.Msg {
-			return ui.NavigateMsg{View: ui.BackupView}
+			return ui.NavigateMsg{View: ui.SyncView}
 		}
 	case "settings":
 		return m, func() tea.Msg {
