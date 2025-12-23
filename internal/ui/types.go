@@ -9,6 +9,7 @@ const (
 	LogDetailsView
 	SettingsView
 	StatsView
+	SyncView
 )
 
 type Route struct {
