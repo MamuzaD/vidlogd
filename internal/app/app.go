@@ -21,6 +21,7 @@ type Model struct {
 	logDetails *views.LogDetailsModel
 	settings   *views.SettingsModel
 	stats      *views.StatsModel
+	sync       *views.SyncModel
 
 	// Terminal dimensions for centering
 	width  int
@@ -107,6 +108,12 @@ func (m Model) applyRoute(r ui.Route) (Model, tea.Cmd) {
 			m.stats = &s
 		}
 		return m, m.stats.Init()
+	case ui.SyncView:
+		if m.sync == nil {
+			b := views.NewSyncModel()
+			m.sync = &b
+		}
+		return m, m.sync.Init()
 	default:
 		return m, nil
 	}
@@ -190,6 +197,9 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		if m.stats != nil {
 			refresh(m.stats)
 		}
+		if m.sync != nil {
+			refresh(m.sync)
+		}
 		return m, nil
 	}
 
@@ -206,6 +216,8 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		cmd = updatePtr(&m.settings, msg, func() views.SettingsModel { return views.NewSettingsModel(0) })
 	case ui.StatsView:
 		cmd = updatePtr(&m.stats, msg, views.NewStatsModel)
+	case ui.SyncView:
+		cmd = updatePtr(&m.sync, msg, views.NewSyncModel)
 	}
 
 	return m, cmd
@@ -235,10 +247,13 @@ func (m Model) View() string {
 		if m.settings != nil {
 			content = m.settings.View()
 		}
-
 	case ui.StatsView:
 		if m.stats != nil {
 			content = m.stats.View()
+		}
+	case ui.SyncView:
+		if m.sync != nil {
+			content = m.sync.View()
 		}
 	}
 
@@ -267,6 +282,7 @@ func Run() error {
 		logVideo: func() *views.LogVideoModel { lv := views.NewLogVideoModel(""); return &lv }(),
 		settings: func() *views.SettingsModel { s := views.NewSettingsModel(0); return &s }(),
 		stats:    func() *views.StatsModel { s := views.NewStatsModel(); return &s }(),
+		sync:     func() *views.SyncModel { b := views.NewSyncModel(); return &b }(),
 	}
 
 	p := tea.NewProgram(m, tea.WithAltScreen())
